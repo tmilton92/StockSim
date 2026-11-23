@@ -9,3 +9,4 @@ acceptance; supersede with a new ADR instead.
 | [0002](0002-catch2-core-tests.md) | Catch2 v3 for core unit tests | Accepted |
 | [0003](0003-third-party-submodules.md) | Third-party C++ deps as pinned git submodules | Accepted |
 | [0004](0004-cpp-style-and-naming.md) | C++ formatting and naming conventions | Accepted |
+| [0005](0005-event-schema-v1.md) | Event schema v1 and the step model | Accepted |

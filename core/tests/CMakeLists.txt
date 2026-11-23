@@ -1,5 +1,15 @@
 add_executable(stocksim_core_tests)
-target_sources(stocksim_core_tests PRIVATE version_test.cpp)
+target_sources(
+    stocksim_core_tests
+    PRIVATE
+        matching_engine_test.cpp
+        matching_property_test.cpp
+        order_book_test.cpp
+        rng_test.cpp
+        strong_type_test.cpp
+        test_support.hpp
+        version_test.cpp
+)
 target_compile_features(stocksim_core_tests PRIVATE cxx_std_20)
 set_target_properties(stocksim_core_tests PROPERTIES CXX_EXTENSIONS OFF)
 target_link_libraries(

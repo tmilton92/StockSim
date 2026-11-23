@@ -1,0 +1,8 @@
+# Test-only relaxations on top of the repo-root config.
+# - Catch2 TEST_CASE/SECTION macros inflate cognitive complexity far beyond what is readable.
+# - Tests guard optionals with REQUIRE(opt), which aborts the test case before any access;
+#   the checker cannot see through the macro, so every guarded access would be flagged.
+InheritParentConfig: true
+Checks: >
+  -readability-function-cognitive-complexity,
+  -bugprone-unchecked-optional-access

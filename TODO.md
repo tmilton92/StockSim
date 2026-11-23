@@ -28,15 +28,21 @@ capital from retail traders — including the player.
 - [ ] CI: add a benchmark job once core has a benchmarkable step loop (CLAUDE.md targets)
 
 ## 1. Core: order book & matching (C++)
-- [ ] Types: Price (fixed-point ticks), Qty, AccountId, OwnerId, OrderId, Tick
-- [ ] Order types: market, limit, stop, stop-limit, cancel, modify
-- [ ] Limit order book with price-time priority
-- [ ] Matching engine producing fills
-- [ ] Last price, best bid/ask, depth snapshot, volume
-- [ ] Event stream: OrderPlaced, OrderCancelled, Match, Fill, PriceChange (with reason string)
-- [ ] Event-level stepping API: `step_event()`, `step_tick()`
-- [ ] Seeded RNG wrapper used everywhere
-- [ ] Tests: crossing, partial fills, priority, stops triggering
+- [x] Types: Price (fixed-point ticks), Qty, AccountId, OwnerId, OrderId, Tick
+- [x] Order types: market, limit, stop, stop-limit, cancel, modify
+- [x] Limit order book with price-time priority
+- [x] Matching engine producing fills
+- [x] Last price, best bid/ask, depth snapshot, volume
+- [x] Event stream: OrderPlaced, OrderCancelled, Match, Fill, PriceChange (with reason string)
+  (schema v1 also has OrderRejected, OrderRested, OrderModified, CommandRejected,
+  StopTriggered; ADR 0005)
+- [x] Event-level stepping API: `step_event()`, `step_tick()`
+- [x] Seeded RNG wrapper used everywhere (xoshiro256**, bit-exact across platforms)
+- [x] Tests: crossing, partial fills, priority, stops triggering (+ cancel/modify, validation,
+  stepping, randomized invariants and same-seed determinism)
+- [ ] Time-in-force options (IOC/FOK/post-only) if a chapter needs them
+- [ ] Order book perf pass once benchmarks exist: flat price-indexed ladder instead of
+  `std::map` levels (profile first, per CLAUDE.md)
 
 ## 2. Snapshots & replay
 - [ ] Full-state serialization of core

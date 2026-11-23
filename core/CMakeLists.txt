@@ -1,7 +1,4 @@
 # stocksim_core: the simulation library. Standard C++ only; no Godot dependency.
-#
-# The core is header-only until the first compiled sources land (TODO.md section 1); at that
-# point this becomes a STATIC library linking stocksim::warnings privately.
 
 set(STOCKSIM_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/include")
 configure_file(
@@ -10,15 +7,35 @@ configure_file(
     @ONLY
 )
 
-add_library(stocksim_core INTERFACE)
+add_library(stocksim_core STATIC)
 add_library(stocksim::core ALIAS stocksim_core)
 
 target_sources(
     stocksim_core
-    INTERFACE
+    PRIVATE
+        src/matching_engine.cpp
+        src/names.cpp
+        src/order_book.cpp
+        src/rng.cpp
+    PUBLIC
         FILE_SET HEADERS
-        BASE_DIRS "${STOCKSIM_GENERATED_INCLUDE_DIR}"
-        FILES "${STOCKSIM_GENERATED_INCLUDE_DIR}/stocksim/version.hpp"
+        BASE_DIRS include "${STOCKSIM_GENERATED_INCLUDE_DIR}"
+        FILES
+            include/stocksim/event.hpp
+            include/stocksim/matching_engine.hpp
+            include/stocksim/order.hpp
+            include/stocksim/order_book.hpp
+            include/stocksim/rng.hpp
+            include/stocksim/strong_type.hpp
+            include/stocksim/types.hpp
+            "${STOCKSIM_GENERATED_INCLUDE_DIR}/stocksim/version.hpp"
 )
 
-target_compile_features(stocksim_core INTERFACE cxx_std_20)
+target_compile_features(stocksim_core PUBLIC cxx_std_20)
+set_target_properties(
+    stocksim_core
+    PROPERTIES
+        CXX_EXTENSIONS OFF
+        POSITION_INDEPENDENT_CODE ON
+)
+target_link_libraries(stocksim_core PRIVATE stocksim::warnings)

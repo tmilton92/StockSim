@@ -1,4 +1,11 @@
 # clang-tidy 19 (pinned; see docs/VERSIONS.md). Naming convention recorded in docs/adr/0004.
+#
+# Disabled, with reasons:
+# - readability-redundant-member-init: aggregates deliberately give every member a `{}`
+#   initializer; Clang 18+ -Wmissing-field-initializers otherwise warns when a designated
+#   initializer omits a member that has no default member initializer.
+# - readability-redundant-casting, clang-analyzer-optin.core.EnumCastOutOfRange: false
+#   positives reported inside MSVC STL and Catch2 headers through macro expansion.
 Checks: >
   -*,
   bugprone-*,
@@ -18,7 +25,10 @@ Checks: >
   portability-*,
   readability-*,
   -readability-magic-numbers,
-  -readability-identifier-length
+  -readability-identifier-length,
+  -readability-redundant-member-init,
+  -readability-redundant-casting,
+  -clang-analyzer-optin.core.EnumCastOutOfRange
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(core|gdext)[/\](include|src|tests)[/\].*'
 FormatStyle: file
