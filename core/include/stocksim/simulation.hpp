@@ -1,5 +1,6 @@
 #pragma once
 
+#include "stocksim/agents/agent_world.hpp"
 #include "stocksim/event.hpp"
 #include "stocksim/matching_engine.hpp"
 #include "stocksim/order.hpp"
@@ -24,6 +25,8 @@ struct SimulationConfig {
     /// Bounds the replay cost of `step_back()` to about this many ticks of work. Zero or less
     /// disables periodic snapshots, so `step_back()` replays from the start.
     std::int64_t snapshot_interval_ticks = 64;
+    /// The simulated crowd. None by default: only explicit inputs trade.
+    std::optional<AgentWorldConfig> agents;
 };
 
 /// Checks every field of `config` against its allowed range. Returns the first problem found,
@@ -74,6 +77,8 @@ public:
     [[nodiscard]] bool has_redo() const noexcept { return m_cursor < m_journal.size(); }
 
     [[nodiscard]] const MatchingEngine& engine() const noexcept { return m_engine; }
+    /// The agent world, if the configuration has one.
+    [[nodiscard]] const std::optional<AgentWorld>& world() const noexcept { return m_world; }
     [[nodiscard]] std::span<const Event> events() const noexcept { return m_engine.events(); }
     void clear_events() noexcept { m_engine.clear_events(); }
     [[nodiscard]] SequenceNumber last_sequence() const noexcept { return m_engine.last_sequence(); }
@@ -83,8 +88,8 @@ public:
     [[nodiscard]] std::size_t journal_size() const noexcept { return m_journal.size(); }
     [[nodiscard]] std::size_t snapshot_count() const noexcept { return m_snapshots.size(); }
 
-    /// Serializes the current state (header + engine state). History is not included: a
-    /// loaded simulation starts with an empty journal at the saved state.
+    /// Serializes the current state (header + engine + agent world). History is not included:
+    /// a loaded simulation starts with an empty journal at the saved state.
     [[nodiscard]] std::vector<std::byte> save() const;
 
     /// Restores a simulation saved with `save()`.
@@ -108,7 +113,8 @@ private:
         std::vector<std::byte> state{};
     };
 
-    Simulation(const SimulationConfig& config, MatchingEngine engine);
+    Simulation(const SimulationConfig& config, MatchingEngine engine,
+               std::optional<AgentWorld> world);
 
     [[nodiscard]] static bool is_step(JournalOp op) noexcept {
         return op == JournalOp::kStep || op == JournalOp::kAdvanceTick;
@@ -122,9 +128,17 @@ private:
     void apply_next();
     void take_snapshot_if_due();
     void rewind_to(std::size_t target);
+    /// Advances the engine tick, then gives the agent world its turn. The only place ticks
+    /// advance, so live runs and replays treat agents identically.
+    void advance_tick();
+    /// Engine state followed by the agent world (if any): what snapshots hold.
+    void write_state(StateWriter& out) const;
+    /// Restores what write_state wrote. Fails the reader on invalid data.
+    void read_state(StateReader& in);
 
     SimulationConfig m_config;
     MatchingEngine m_engine;
+    std::optional<AgentWorld> m_world;
     std::vector<JournalEntry> m_journal;
     std::size_t m_cursor = 0;
     /// Sorted by position; always contains position 0.

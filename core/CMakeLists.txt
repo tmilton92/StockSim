@@ -21,6 +21,12 @@ function(stocksim_add_core_library target)
     target_sources(
         ${target}
         PRIVATE
+            ${STOCKSIM_CORE_DIR}/src/account_ledger.cpp
+            ${STOCKSIM_CORE_DIR}/src/agents/agent_config.cpp
+            ${STOCKSIM_CORE_DIR}/src/agents/agent_population.cpp
+            ${STOCKSIM_CORE_DIR}/src/agents/agent_world.cpp
+            ${STOCKSIM_CORE_DIR}/src/agents/market_maker.cpp
+            ${STOCKSIM_CORE_DIR}/src/agents/value_process.cpp
             ${STOCKSIM_CORE_DIR}/src/event_hash.cpp
             ${STOCKSIM_CORE_DIR}/src/event_ring.cpp
             ${STOCKSIM_CORE_DIR}/src/matching_engine.cpp
@@ -34,6 +40,12 @@ function(stocksim_add_core_library target)
             FILE_SET HEADERS
             BASE_DIRS ${STOCKSIM_CORE_DIR}/include "${STOCKSIM_CORE_GENERATED_INCLUDE_DIR}"
             FILES
+                ${STOCKSIM_CORE_DIR}/include/stocksim/account_ledger.hpp
+                ${STOCKSIM_CORE_DIR}/include/stocksim/agents/agent_config.hpp
+                ${STOCKSIM_CORE_DIR}/include/stocksim/agents/agent_population.hpp
+                ${STOCKSIM_CORE_DIR}/include/stocksim/agents/agent_world.hpp
+                ${STOCKSIM_CORE_DIR}/include/stocksim/agents/market_maker.hpp
+                ${STOCKSIM_CORE_DIR}/include/stocksim/agents/value_process.hpp
                 ${STOCKSIM_CORE_DIR}/include/stocksim/event.hpp
                 ${STOCKSIM_CORE_DIR}/include/stocksim/event_hash.hpp
                 ${STOCKSIM_CORE_DIR}/include/stocksim/event_ring.hpp
@@ -56,6 +68,13 @@ function(stocksim_add_core_library target)
             POSITION_INDEPENDENT_CODE ON
     )
     target_link_libraries(${target} PRIVATE stocksim::warnings)
+    if(NOT MSVC)
+        # Determinism guard: never fuse a*b+c into one rounding (Clang does by default on
+        # arm64). Core uses integer arithmetic for market state; this keeps any future
+        # floating-point heuristic bit-identical across platforms. MSVC does not contract by
+        # default (/fp:precise).
+        target_compile_options(${target} PRIVATE -ffp-contract=off)
+    endif()
 endfunction()
 
 stocksim_add_core_library(stocksim_core)

@@ -82,6 +82,8 @@ public:
         REASON_TAKER_FILL,
         REASON_MAKER_FILL,
         REASON_LAST_TRADE_PRICE,
+        REASON_INSUFFICIENT_FUNDS,
+        REASON_INSUFFICIENT_SHARES,
     };
     /// Column index of each field in a `drain_events()` row; EVENT_STRIDE is the row width.
     enum EventField : std::uint8_t {
@@ -121,6 +123,17 @@ public:
         DEPTH_FIELD_QTY,
         DEPTH_FIELD_ORDER_COUNT,
         DEPTH_STRIDE,
+    };
+    /// Column index of each field returned by `get_account()`.
+    enum AccountField : std::uint8_t {
+        ACCOUNT_FIELD_ID,
+        ACCOUNT_FIELD_CASH,
+        ACCOUNT_FIELD_POSITION,
+        ACCOUNT_FIELD_LIMITED,
+        ACCOUNT_FIELD_LEVERAGE_PERCENT,
+        ACCOUNT_FIELD_COMMITTED_BUY,
+        ACCOUNT_FIELD_COMMITTED_SELL,
+        ACCOUNT_STRIDE,
     };
 
     Simulation();
@@ -172,6 +185,7 @@ public:
     [[nodiscard]] int64_t get_trade_count() const;
     [[nodiscard]] godot::PackedInt64Array get_depth(Side side, int64_t max_levels) const;
     [[nodiscard]] godot::PackedInt64Array get_order(int64_t order_id) const;
+    [[nodiscard]] godot::PackedInt64Array get_account(int64_t account) const;
 
     // Persistence
     [[nodiscard]] godot::PackedByteArray save_state() const;
@@ -226,3 +240,4 @@ VARIANT_ENUM_CAST(stocksim::gdext::Simulation::Reason);
 VARIANT_ENUM_CAST(stocksim::gdext::Simulation::EventField);
 VARIANT_ENUM_CAST(stocksim::gdext::Simulation::OrderField);
 VARIANT_ENUM_CAST(stocksim::gdext::Simulation::DepthField);
+VARIANT_ENUM_CAST(stocksim::gdext::Simulation::AccountField);

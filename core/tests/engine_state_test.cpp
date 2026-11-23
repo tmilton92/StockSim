@@ -137,10 +137,10 @@ TEST_CASE("out-of-range values in engine state are rejected", "[serialization][e
     std::vector<std::byte> bytes = state_of(engine);
 
     // Counters: tick(8) next_order_id(8) next_sequence(8) next_stop_sequence(8)
-    // last_price(1+8) volumes(3*8) trade_count(8) = 73 bytes; then bid count(8) = 0, ask
-    // count(8) = 1, then the resting order: id(8) account(4) type(1) ...
+    // last_price(1+8) volumes(3*8) trade_count(8) taker volumes(4*8) = 105 bytes; then bid
+    // count(8) = 0, ask count(8) = 1, then the resting order: id(8) account(4) type(1) ...
     constexpr std::size_t kLastPriceFlagOffset = 32;
-    constexpr std::size_t kAskTypeOffset = 73 + 8 + 8 + 8 + 4;
+    constexpr std::size_t kAskTypeOffset = 105 + 8 + 8 + 8 + 4;
     REQUIRE(bytes.size() > kAskTypeOffset);
     REQUIRE(bytes[kAskTypeOffset] == std::byte{static_cast<std::uint8_t>(OrderType::kLimit)});
 

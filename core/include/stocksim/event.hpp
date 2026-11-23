@@ -9,9 +9,9 @@
 
 namespace stocksim {
 
-/// Version of the `Event` layout and semantics. Bump (with an ADR, see docs/adr/0005) whenever
-/// a field, type, or reason is added, removed, or reinterpreted.
-inline constexpr std::uint32_t kEventSchemaVersion = 1;
+/// Version of the `Event` layout and semantics. Bump (with an ADR, see docs/adr/0005 and 0010)
+/// whenever a field, type, or reason is added, removed, or reinterpreted.
+inline constexpr std::uint32_t kEventSchemaVersion = 2;
 
 enum class EventType : std::uint8_t {
     /// An order passed validation and was accepted.
@@ -58,6 +58,9 @@ enum class Reason : std::uint8_t {
     kTakerFill,
     kMakerFill,
     kLastTradePrice,
+    // Schema v2 (ADR 0010): account limits.
+    kInsufficientFunds,
+    kInsufficientShares,
 };
 
 /// What a broker meant to achieve with an action (TODO §9). Non-broker events use kNone.

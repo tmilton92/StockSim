@@ -59,8 +59,13 @@ void MatchingEngine::step_tick() {
 
 void MatchingEngine::advance_tick() {
     assert(idle() && "advance_tick requires all queued work to be finished");
+    assert(m_ledger.check_conservation() && "cash or shares were created or destroyed");
     m_previous_tick_volume = m_tick_volume;
     m_tick_volume = Qty{0};
+    m_previous_taker_buy = m_taker_buy;
+    m_previous_taker_sell = m_taker_sell;
+    m_taker_buy = Qty{0};
+    m_taker_sell = Qty{0};
     m_tick += Tick{1};
 }
 
@@ -199,7 +204,12 @@ void MatchingEngine::process_new(const Command& command) {
     const PriceTicks limit_price = has_limit_price(order.type) ? order.limit_price : PriceTicks{};
     const PriceTicks stop_price = has_stop_price(order.type) ? order.stop_price : PriceTicks{};
 
-    const Reason invalid = validate(order);
+    Reason invalid = validate(order);
+    if (invalid == Reason::kNone && !has_stop_price(order.type)) {
+        invalid = check_active_order(order.account, order.side, order.type, limit_price, order.qty);
+    } else if (invalid == Reason::kNone && order.side == Side::kSell) {
+        invalid = m_ledger.check_sell(order.account, order.qty); // stop sells reserve shares
+    }
     const Reason reason = invalid == Reason::kNone ? Reason::kOrderAccepted : invalid;
     Event& event = emit(
         invalid == Reason::kNone ? EventType::kOrderPlaced : EventType::kOrderRejected, reason);
@@ -239,6 +249,9 @@ void MatchingEngine::process_new(const Command& command) {
         m_sell_stops.emplace(key, stop);
     }
     m_stop_index.emplace(command.id, std::pair{order.side, key});
+    if (order.side == Side::kSell) {
+        m_ledger.reserve_sell(order.account, order.qty);
+    }
     // A stop whose price has already been reached triggers right away.
     collect_triggered_stops();
 }
@@ -256,6 +269,7 @@ void MatchingEngine::process_cancel(const Command& command) {
             return;
         }
         m_book.remove(command.id);
+        release_resting(*resting, resting->remaining);
         Event& event = emit(EventType::kOrderCancelled, Reason::kCancelledByOwner);
         describe(event, *resting);
         event.qty = resting->remaining;
@@ -276,6 +290,9 @@ void MatchingEngine::process_cancel(const Command& command) {
             m_sell_stops.erase(key);
         }
         m_stop_index.erase(it);
+        if (side == Side::kSell) {
+            m_ledger.release_sell(stop.account, stop.qty);
+        }
         Event& event = emit(EventType::kOrderCancelled, Reason::kCancelledByOwner);
         describe(event, stop);
         event.remaining = Qty{0};
@@ -317,6 +334,7 @@ void MatchingEngine::process_modify(const Command& command) {
     if (keeps_priority) {
         if (command.new_qty < resting->remaining) {
             m_book.reduce(command.id, command.new_qty);
+            release_resting(*resting, resting->remaining - command.new_qty);
         }
         Event& event = emit(EventType::kOrderModified, Reason::kModifiedKeptPriority);
         describe(event, *resting);
@@ -326,6 +344,15 @@ void MatchingEngine::process_modify(const Command& command) {
         return;
     }
 
+    // The modified order is checked like a new one; its old commitment no longer counts.
+    release_resting(*resting, resting->remaining);
+    const Reason affordable = check_active_order(resting->account, resting->side, resting->type,
+                                                 command.new_limit_price, command.new_qty);
+    if (affordable != Reason::kNone) {
+        reserve_resting(*resting, resting->remaining);
+        reject(affordable);
+        return;
+    }
     m_book.remove(command.id);
     Event& event = emit(EventType::kOrderModified, Reason::kModifiedLostPriority);
     describe(event, *resting);
@@ -340,6 +367,38 @@ void MatchingEngine::process_modify(const Command& command) {
                            .limit_price = command.new_limit_price,
                            .remaining = command.new_qty,
                            .filled = resting->filled};
+}
+
+bool MatchingEngine::open_account(AccountId account, Money cash, Qty shares,
+                                  std::int32_t leverage_percent) {
+    return m_ledger.open(account, cash, shares, leverage_percent);
+}
+
+Reason MatchingEngine::check_active_order(AccountId account, Side side, OrderType type,
+                                          PriceTicks limit_price, Qty qty) const {
+    if (side == Side::kSell) {
+        return m_ledger.check_sell(account, qty);
+    }
+    // A limit buy can cost at most its limit; a market buy costs what sweeping the asks costs.
+    const Money cost =
+        has_limit_price(type) ? notional(limit_price, qty) : m_book.cost_to_take(Side::kSell, qty);
+    return m_ledger.check_buy(account, cost, m_last_price);
+}
+
+void MatchingEngine::reserve_resting(const RestingOrder& order, Qty qty) {
+    if (order.side == Side::kBuy) {
+        m_ledger.reserve_buy(order.account, notional(order.price, qty));
+    } else {
+        m_ledger.reserve_sell(order.account, qty);
+    }
+}
+
+void MatchingEngine::release_resting(const RestingOrder& order, Qty qty) {
+    if (order.side == Side::kBuy) {
+        m_ledger.release_buy(order.account, notional(order.price, qty));
+    } else {
+        m_ledger.release_sell(order.account, qty);
+    }
 }
 
 bool MatchingEngine::crosses(const ActiveOrder& order, PriceTicks maker_price) noexcept {
@@ -370,8 +429,15 @@ void MatchingEngine::execute_match(ActiveOrder& taker, const RestingOrder& maker
     assert(maker_after && maker_after->id == maker.id);
     taker.remaining -= qty;
     taker.filled += qty;
+    release_resting(maker, qty);
+    if (taker.side == Side::kBuy) {
+        m_ledger.apply_fill(taker.account, maker.account, price, qty);
+    } else {
+        m_ledger.apply_fill(maker.account, taker.account, price, qty);
+    }
     m_total_volume += qty;
     m_tick_volume += qty;
+    (taker.side == Side::kBuy ? m_taker_buy : m_taker_sell) += qty;
     ++m_trade_count;
 
     Event& match = emit(EventType::kMatch, Reason::kTrade);
@@ -412,14 +478,16 @@ void MatchingEngine::execute_match(ActiveOrder& taker, const RestingOrder& maker
 void MatchingEngine::finish_active(const ActiveOrder order) {
     m_active.reset();
     if (has_limit_price(order.type)) {
-        [[maybe_unused]] const bool added = m_book.add(RestingOrder{.id = order.id,
-                                                                    .account = order.account,
-                                                                    .side = order.side,
-                                                                    .type = order.type,
-                                                                    .price = order.limit_price,
-                                                                    .remaining = order.remaining,
-                                                                    .filled = order.filled});
+        const RestingOrder resting{.id = order.id,
+                                   .account = order.account,
+                                   .side = order.side,
+                                   .type = order.type,
+                                   .price = order.limit_price,
+                                   .remaining = order.remaining,
+                                   .filled = order.filled};
+        [[maybe_unused]] const bool added = m_book.add(resting);
         assert(added);
+        reserve_resting(resting, order.remaining);
         Event& event = emit(EventType::kOrderRested, Reason::kRestingOnBook);
         describe(event, order);
         event.aux_price = PriceTicks{};
@@ -442,6 +510,19 @@ void MatchingEngine::activate_triggered_stop() {
     // For a trigger, `price` is the last trade price that fired it; the stop's own limit
     // price is visible again once it rests (OrderRested).
     event.price = m_last_price.value_or(PriceTicks{});
+    if (stop.side == Side::kSell) {
+        m_ledger.release_sell(stop.account, stop.qty); // the shares are being sold now
+    } else {
+        // Buy stops reserve nothing while pending, so they are checked when they fire.
+        const Reason affordable =
+            check_active_order(stop.account, stop.side, stop.type, stop.limit_price, stop.qty);
+        if (affordable != Reason::kNone) {
+            Event& cancelled = emit(EventType::kOrderCancelled, affordable);
+            describe(cancelled, stop);
+            cancelled.remaining = Qty{0};
+            return;
+        }
+    }
     m_active = ActiveOrder{.id = stop.id,
                            .account = stop.account,
                            .side = stop.side,

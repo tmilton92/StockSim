@@ -1,5 +1,6 @@
 #pragma once
 
+#include "stocksim/account_ledger.hpp"
 #include "stocksim/event.hpp"
 #include "stocksim/order.hpp"
 #include "stocksim/order_book.hpp"
@@ -91,12 +92,28 @@ public:
     /// Traded quantity during the previous (completed) tick.
     [[nodiscard]] Qty previous_tick_volume() const noexcept { return m_previous_tick_volume; }
     [[nodiscard]] std::uint64_t trade_count() const noexcept { return m_trade_count; }
+    /// Quantity bought / sold by takers (aggressors) during the previous tick: the crowd's
+    /// net demand, which herding traders react to.
+    [[nodiscard]] Qty previous_tick_taker_buy_volume() const noexcept {
+        return m_previous_taker_buy;
+    }
+    [[nodiscard]] Qty previous_tick_taker_sell_volume() const noexcept {
+        return m_previous_taker_sell;
+    }
 
     /// Top `out.size()` price levels on `side`, best first. Returns the number written.
     [[nodiscard]] std::size_t depth(Side side, std::span<DepthLevel> out) const;
 
     [[nodiscard]] std::optional<OrderView> find_order(OrderId id) const;
     [[nodiscard]] const OrderBook& book() const noexcept { return m_book; }
+
+    /// Opens a limited account (see AccountLedger for the rules). Returns false if it already
+    /// exists (opened or traded) or the values are invalid.
+    bool open_account(AccountId account, Money cash, Qty shares, std::int32_t leverage_percent);
+    [[nodiscard]] std::optional<AccountView> account(AccountId id) const {
+        return m_ledger.find(id);
+    }
+    [[nodiscard]] const AccountLedger& ledger() const noexcept { return m_ledger; }
 
     /// Events emitted since the last `clear_events()`, oldest first.
     [[nodiscard]] std::span<const Event> events() const noexcept { return m_events; }
@@ -190,6 +207,13 @@ private:
     void collect_triggered_stops();
     [[nodiscard]] static bool crosses(const ActiveOrder& order, PriceTicks maker_price) noexcept;
 
+    /// Account check for an order about to become active (market, limit, or triggered stop).
+    [[nodiscard]] Reason check_active_order(AccountId account, Side side, OrderType type,
+                                            PriceTicks limit_price, Qty qty) const;
+    /// Reserves / releases what a resting limit order commits in its account.
+    void reserve_resting(const RestingOrder& order, Qty qty);
+    void release_resting(const RestingOrder& order, Qty qty);
+
     // State loading, one section each (see save_state for the layout).
     void load_counters(StateReader& in);
     void load_book(StateReader& in);
@@ -199,6 +223,7 @@ private:
     [[nodiscard]] static StopOrder read_stop(StateReader& in);
 
     OrderBook m_book{};
+    AccountLedger m_ledger{};
     std::deque<Command> m_commands{};
     std::optional<ActiveOrder> m_active{};
     std::deque<StopOrder> m_triggered{};
@@ -216,6 +241,10 @@ private:
     Qty m_total_volume{};
     Qty m_tick_volume{};
     Qty m_previous_tick_volume{};
+    Qty m_taker_buy{};
+    Qty m_taker_sell{};
+    Qty m_previous_taker_buy{};
+    Qty m_previous_taker_sell{};
     std::uint64_t m_trade_count = 0;
 };
 

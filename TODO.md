@@ -62,7 +62,8 @@ capital from retail traders — including the player.
 - [x] Ring buffer of events pulled by Godot each frame (lock-free SPSC `EventRing` with
   backpressure; `drain_events()` returns packed rows)
 - [x] Query API: book depth, order lookup (+ last price, best bid/ask, volume, tick)
-- [ ] Query API: account state (cash, position, margin) once accounts exist in core (§7/§10)
+- [x] Query API: account state, cash and position (`get_account`, §6a, ADR 0010)
+- [ ] Query API: margin and liquidation state once margin exists in core (§7)
 - [ ] Query API: ownership lookup once owners exist in core (§8)
 - [x] Config from scenario JSON (format v1: `docs/scenario-format.md`, `/scenarios`)
 - [x] Decide how scenario files are packaged into exported builds: they live in
@@ -98,12 +99,17 @@ capital from retail traders — including the player.
 - [ ] Narration cues tied to specific events within a beat (beyond beat text)
 
 ## 6. Agents & cohorts
-- [ ] Fundamental value process (hidden true value)
-- [ ] Agent SoA storage in C++
-- [ ] Trader styles: momentum, mean-reversion, FOMO/herding, panic seller, leverage gambler, value, noise
-- [ ] Per-agent params: capital, leverage, risk tolerance, reaction delay, attention, stop habits, social sensitivity
+Split into 6a (core agents), 6b (scale and realism), 6c (Godot and chapter 4). ADR 0010.
+
+- [x] Account ledger in core: cash/positions, long-only limits with leverage, commitments,
+  conservation check (6a; margin and shorting in §7)
+- [x] Fundamental value process (hidden true value)
+- [x] Agent SoA storage in C++
+- [x] Trader styles: momentum, mean-reversion, FOMO/herding, panic seller, leverage gambler, value, noise
+- [x] Per-agent params: capital, leverage, risk tolerance, reaction delay, attention, stop habits, social sensitivity
+- [x] Agent world in snapshots/save-load; tick-start decision phase; pinned agent golden digest
 - [ ] Cohort agents (weighted representative agents) for 1M → billions
-- [ ] Market maker agent (two-sided quotes, inventory mgmt)
+- [x] Market maker agent (two-sided quotes, inventory mgmt)
 - [ ] Arbitrageur agent (toggleable)
 - [ ] Threading for agent decision phase
 - [ ] Sanity checks: fat tails, volatility clustering

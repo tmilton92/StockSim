@@ -53,6 +53,13 @@
 				Returns the name of an event type, such as [code]"Match"[/code] for [constant EVENT_MATCH].
 			</description>
 		</method>
+		<method name="get_account" qualifiers="const">
+			<return type="PackedInt64Array" />
+			<param index="0" name="account" type="int" />
+			<description>
+				Returns account [param account] as [constant ACCOUNT_STRIDE] integers indexed with the [code]ACCOUNT_FIELD_*[/code] constants, or an empty array if it has never been opened or traded. Cash is in price ticks x shares; positions are in shares.
+			</description>
+		</method>
 		<method name="get_best_ask" qualifiers="const">
 			<return type="int" />
 			<description>
@@ -374,6 +381,12 @@
 		<constant name="REASON_LAST_TRADE_PRICE" value="17" enum="Reason">
 			The market price is the last trade price.
 		</constant>
+		<constant name="REASON_INSUFFICIENT_FUNDS" value="18" enum="Reason">
+			The account cannot afford the order with its cash and leverage.
+		</constant>
+		<constant name="REASON_INSUFFICIENT_SHARES" value="19" enum="Reason">
+			The account does not hold enough uncommitted shares to sell (no short selling).
+		</constant>
 		<constant name="EVENT_FIELD_SEQ" value="0" enum="EventField">
 			Global sequence number; strictly increasing by one.
 		</constant>
@@ -463,6 +476,30 @@
 		</constant>
 		<constant name="DEPTH_STRIDE" value="3" enum="DepthField">
 			Number of integers per row returned by [method get_depth].
+		</constant>
+		<constant name="ACCOUNT_FIELD_ID" value="0" enum="AccountField">
+			Account id.
+		</constant>
+		<constant name="ACCOUNT_FIELD_CASH" value="1" enum="AccountField">
+			Cash balance (may be negative when trading on leverage).
+		</constant>
+		<constant name="ACCOUNT_FIELD_POSITION" value="2" enum="AccountField">
+			Shares held.
+		</constant>
+		<constant name="ACCOUNT_FIELD_LIMITED" value="3" enum="AccountField">
+			[code]1[/code] if the account was opened with limits (buying power and no short selling), [code]0[/code] if unlimited.
+		</constant>
+		<constant name="ACCOUNT_FIELD_LEVERAGE_PERCENT" value="4" enum="AccountField">
+			Leverage as a percentage: [code]100[/code] is 1x.
+		</constant>
+		<constant name="ACCOUNT_FIELD_COMMITTED_BUY" value="5" enum="AccountField">
+			Cash reserved by resting buy orders.
+		</constant>
+		<constant name="ACCOUNT_FIELD_COMMITTED_SELL" value="6" enum="AccountField">
+			Shares reserved by resting sell orders and pending sell stops.
+		</constant>
+		<constant name="ACCOUNT_STRIDE" value="7" enum="AccountField">
+			Number of integers returned by [method get_account] for a known account.
 		</constant>
 	</constants>
 </class>

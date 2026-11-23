@@ -20,6 +20,8 @@ constexpr Error kUnsupportedVersion{
     .message = "State was saved by an incompatible state format or event schema version."};
 constexpr Error kTrailingBytes{.code = ErrorCode::kCorruptState,
                                .message = "State has unexpected data after the engine state."};
+constexpr Error kCorruptAgents{.code = ErrorCode::kCorruptState,
+                               .message = "State is missing or has an invalid agent section."};
 
 } // namespace
 
@@ -37,17 +39,75 @@ std::optional<Error> validate(const SimulationConfig& config) noexcept {
         return Error{.code = ErrorCode::kInvalidConfig,
                      .message = "snapshot_interval_ticks must be between 0 and 1000000."};
     }
+    if (config.agents) {
+        return validate(*config.agents);
+    }
     return std::nullopt;
 }
 
-Simulation::Simulation(const SimulationConfig& config)
-    : Simulation(config, MatchingEngine{config.engine}) {}
+namespace {
 
-Simulation::Simulation(const SimulationConfig& config, MatchingEngine engine)
-    : m_config(config), m_engine(std::move(engine)) {
+std::optional<AgentWorld> make_world(const SimulationConfig& config, MatchingEngine& engine) {
+    if (!config.agents) {
+        return std::nullopt;
+    }
+    assert(!validate(*config.agents) && "validate(SimulationConfig) before constructing");
+    AgentWorld world{*config.agents};
+    world.open_accounts(engine);
+    return world;
+}
+
+} // namespace
+
+Simulation::Simulation(const SimulationConfig& config) : m_config(config), m_engine(config.engine) {
+    m_world = make_world(config, m_engine);
     StateWriter writer;
-    m_engine.save_state(writer);
+    write_state(writer);
     m_snapshots.push_back(Snapshot{.position = 0, .state = writer.take()});
+}
+
+Simulation::Simulation(const SimulationConfig& config, MatchingEngine engine,
+                       std::optional<AgentWorld> world)
+    : m_config(config), m_engine(std::move(engine)), m_world(std::move(world)) {
+    StateWriter writer;
+    write_state(writer);
+    m_snapshots.push_back(Snapshot{.position = 0, .state = writer.take()});
+}
+
+void Simulation::advance_tick() {
+    m_engine.advance_tick();
+    if (m_world) {
+        m_world->on_tick_start(m_engine);
+    }
+}
+
+void Simulation::write_state(StateWriter& out) const {
+    m_engine.save_state(out);
+    out.boolean(m_world.has_value());
+    if (m_world) {
+        m_world->save_state(out);
+    }
+}
+
+void Simulation::read_state(StateReader& in) {
+    Result<MatchingEngine> engine = MatchingEngine::load_state(in, m_config.engine);
+    if (!engine) {
+        in.fail();
+        return;
+    }
+    std::optional<AgentWorld> world;
+    if (in.boolean()) {
+        Result<AgentWorld> loaded = AgentWorld::load_state(in);
+        if (!loaded) {
+            in.fail();
+            return;
+        }
+        world = std::move(loaded).value();
+    }
+    if (in.ok()) {
+        m_engine = std::move(engine).value();
+        m_world = std::move(world);
+    }
 }
 
 OrderId Simulation::submit(const NewOrder& order) {
@@ -97,7 +157,7 @@ void Simulation::step_tick() {
         } else if (m_engine.step_event()) {
             record(JournalEntry{.op = JournalOp::kStep});
         } else {
-            m_engine.advance_tick();
+            advance_tick();
             record(JournalEntry{.op = JournalOp::kAdvanceTick});
             take_snapshot_if_due();
         }
@@ -166,7 +226,7 @@ void Simulation::apply_next() {
         break;
     }
     case JournalOp::kAdvanceTick:
-        m_engine.advance_tick();
+        advance_tick();
         take_snapshot_if_due();
         break;
     }
@@ -182,7 +242,7 @@ void Simulation::take_snapshot_if_due() {
         return;
     }
     StateWriter writer;
-    m_engine.save_state(writer);
+    write_state(writer);
     m_snapshots.push_back(Snapshot{.position = m_cursor, .state = writer.take()});
 }
 
@@ -192,9 +252,8 @@ void Simulation::rewind_to(std::size_t target) {
     --snapshot;
 
     StateReader reader{snapshot->state};
-    Result<MatchingEngine> restored = MatchingEngine::load_state(reader, m_config.engine);
-    assert(restored && "a snapshot written by this process must load");
-    m_engine = std::move(restored).value();
+    read_state(reader);
+    assert(reader.ok() && "a snapshot written by this process must load");
     m_cursor = snapshot->position;
     while (m_cursor < target) {
         apply_next();
@@ -207,7 +266,7 @@ std::vector<std::byte> Simulation::save() const {
     out.u32(kStateMagic);
     out.u32(kStateFormatVersion);
     out.u32(kEventSchemaVersion);
-    m_engine.save_state(out);
+    write_state(out);
     return out.take();
 }
 
@@ -227,10 +286,21 @@ Result<Simulation> Simulation::load(std::span<const std::byte> bytes,
     if (!engine) {
         return engine.error();
     }
+    std::optional<AgentWorld> world;
+    if (in.boolean()) {
+        Result<AgentWorld> loaded = AgentWorld::load_state(in);
+        if (!loaded) {
+            return loaded.error();
+        }
+        world = std::move(loaded).value();
+    }
+    if (!in.ok()) {
+        return kCorruptAgents;
+    }
     if (in.remaining() != 0) {
         return kTrailingBytes;
     }
-    return Simulation{config, std::move(engine).value()};
+    return Simulation{config, std::move(engine).value(), std::move(world)};
 }
 
 } // namespace stocksim

@@ -34,7 +34,12 @@ public:
         if (roll < 90) {
             target.cancel(requester, id);
         } else {
-            target.modify(requester, id, random_price(), Qty{m_rng.uniform_int(1, 60)});
+            // Draw into locals: the evaluation order of function arguments is unspecified, so
+            // two draws in one argument list run in different orders on different compilers
+            // (it differed between MSVC/GCC and Clang, breaking the golden digest on macOS).
+            const PriceTicks price = random_price();
+            const Qty qty{m_rng.uniform_int(1, 60)};
+            target.modify(requester, id, price, qty);
         }
     }
 

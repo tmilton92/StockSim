@@ -12,7 +12,7 @@ namespace stocksim {
 inline constexpr std::uint32_t kStateMagic = 0x4D495353;
 
 /// Version of the binary state format. Bump when the layout written by `save_state` changes.
-inline constexpr std::uint32_t kStateFormatVersion = 1;
+inline constexpr std::uint32_t kStateFormatVersion = 2;
 
 /// Appends fixed-width little-endian integers to a byte buffer. The encoding is defined
 /// byte-by-byte, so output is identical on every platform.

@@ -38,7 +38,8 @@ func _test_defaults() -> void:
 	_check(not sim.can_step_back(), "nothing to undo at start")
 	_check(sim.get_order(1).is_empty(), "no orders at start")
 	_check(sim.drain_events().is_empty(), "no events at start")
-	_check(Simulation.get_event_schema_version() == 1, "event schema version")
+	_check(sim.get_account(1).is_empty(), "no accounts at start")
+	_check(Simulation.get_event_schema_version() == 2, "event schema version")
 	_check(Simulation.event_type_name(Simulation.EVENT_MATCH) == "Match", "event type name")
 	_check(not Simulation.reason_text(Simulation.REASON_TRADE).is_empty(), "reason text")
 	_check(Simulation.EVENT_STRIDE == 15, "event stride")
@@ -145,6 +146,16 @@ func _test_trading() -> void:
 	_check(order[Simulation.ORDER_FIELD_REMAINING] == 2, "remaining after partial fill")
 	_check(order[Simulation.ORDER_FIELD_FILLED] == 3, "filled quantity")
 
+	var buyer: PackedInt64Array = sim.get_account(2)
+	_check(buyer.size() == Simulation.ACCOUNT_STRIDE, "trading account is visible")
+	_check(buyer[Simulation.ACCOUNT_FIELD_POSITION] == 3, "buyer holds the shares")
+	_check(buyer[Simulation.ACCOUNT_FIELD_CASH] == -300, "buyer paid price x quantity")
+	_check(buyer[Simulation.ACCOUNT_FIELD_LIMITED] == 0, "unopened accounts are unlimited")
+	var seller: PackedInt64Array = sim.get_account(1)
+	_check(seller[Simulation.ACCOUNT_FIELD_POSITION] == -3, "seller is short the shares")
+	_check(seller[Simulation.ACCOUNT_FIELD_COMMITTED_SELL] == 2, "resting ask reserves its shares")
+	_check(sim.get_account(-1).is_empty(), "negative account id is unknown")
+
 	var invalid: int = sim.submit_order(3, Simulation.SIDE_BUY, Simulation.ORDER_TYPE_LIMIT, 0, 99)
 	sim.step_event()
 	rows = sim.drain_events()
@@ -152,6 +163,8 @@ func _test_trading() -> void:
 	_check(rows[Simulation.EVENT_FIELD_TYPE] == Simulation.EVENT_ORDER_REJECTED, "rejected")
 	_check(rows[Simulation.EVENT_FIELD_ORDER_ID] == invalid, "rejection names the order")
 	_check(rows[Simulation.EVENT_FIELD_REASON] == Simulation.REASON_INVALID_QUANTITY, "reason")
+	_check(not Simulation.reason_text(Simulation.REASON_INSUFFICIENT_SHARES).is_empty(),
+		"reason text for the newest reason")
 
 	_expect_error("account must be in [0, 4294967295]")
 	_check(sim.submit_order(-1, Simulation.SIDE_BUY, Simulation.ORDER_TYPE_MARKET, 1) == 0,

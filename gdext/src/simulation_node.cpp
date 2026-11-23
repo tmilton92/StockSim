@@ -83,7 +83,11 @@ static_assert(Simulation::REASON_TRADE == static_cast<int>(Reason::kTrade));
 static_assert(Simulation::REASON_TAKER_FILL == static_cast<int>(Reason::kTakerFill));
 static_assert(Simulation::REASON_MAKER_FILL == static_cast<int>(Reason::kMakerFill));
 static_assert(Simulation::REASON_LAST_TRADE_PRICE == static_cast<int>(Reason::kLastTradePrice));
-static_assert(kEventSchemaVersion == 1, "update the EVENT_* / REASON_* mirrors and docs");
+static_assert(Simulation::REASON_INSUFFICIENT_FUNDS ==
+              static_cast<int>(Reason::kInsufficientFunds));
+static_assert(Simulation::REASON_INSUFFICIENT_SHARES ==
+              static_cast<int>(Reason::kInsufficientShares));
+static_assert(kEventSchemaVersion == 2, "update the EVENT_* / REASON_* mirrors and docs");
 
 constexpr int64_t kMaxDepthLevels = 4096;
 /// Steps taken per lock hold when running unthrottled, so the main thread is never starved.
@@ -529,6 +533,31 @@ godot::PackedInt64Array Simulation::get_order(int64_t order_id) const {
     return row;
 }
 
+godot::PackedInt64Array Simulation::get_account(int64_t account) const {
+    godot::PackedInt64Array row;
+    if (account < 0 || account > static_cast<int64_t>(UINT32_MAX)) {
+        return row;
+    }
+    std::optional<AccountView> view;
+    {
+        const std::lock_guard lock{m_mutex};
+        view = m_simulation->engine().account(AccountId{static_cast<std::uint32_t>(account)});
+    }
+    if (!view) {
+        return row;
+    }
+    row.resize(ACCOUNT_STRIDE);
+    const std::span<int64_t> out{row.ptrw(), static_cast<std::size_t>(ACCOUNT_STRIDE)};
+    out[ACCOUNT_FIELD_ID] = view->id.value();
+    out[ACCOUNT_FIELD_CASH] = view->cash.value();
+    out[ACCOUNT_FIELD_POSITION] = view->position.value();
+    out[ACCOUNT_FIELD_LIMITED] = view->limited ? 1 : 0;
+    out[ACCOUNT_FIELD_LEVERAGE_PERCENT] = view->leverage_percent;
+    out[ACCOUNT_FIELD_COMMITTED_BUY] = view->committed_buy.value();
+    out[ACCOUNT_FIELD_COMMITTED_SELL] = view->committed_sell.value();
+    return row;
+}
+
 // --- Persistence -------------------------------------------------------------------------------
 
 godot::PackedByteArray Simulation::save_state() const {
@@ -562,7 +591,7 @@ godot::Error Simulation::load_state(const godot::PackedByteArray& data) {
 // --- Static helpers ----------------------------------------------------------------------------
 
 String Simulation::reason_text(int64_t reason) {
-    ERR_FAIL_COND_V_MSG(reason < REASON_NONE || reason > REASON_LAST_TRADE_PRICE, String(),
+    ERR_FAIL_COND_V_MSG(reason < REASON_NONE || reason > REASON_INSUFFICIENT_SHARES, String(),
                         "reason must be a Simulation.Reason value.");
     return to_godot(stocksim::reason_text(static_cast<stocksim::Reason>(reason)));
 }
@@ -624,6 +653,7 @@ void Simulation::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_trade_count"), &Simulation::get_trade_count);
     ClassDB::bind_method(D_METHOD("get_depth", "side", "max_levels"), &Simulation::get_depth);
     ClassDB::bind_method(D_METHOD("get_order", "order_id"), &Simulation::get_order);
+    ClassDB::bind_method(D_METHOD("get_account", "account"), &Simulation::get_account);
 
     ClassDB::bind_method(D_METHOD("save_state"), &Simulation::save_state);
     ClassDB::bind_method(D_METHOD("load_state", "data"), &Simulation::load_state);
@@ -680,6 +710,8 @@ void Simulation::_bind_methods() {
     BIND_ENUM_CONSTANT(REASON_TAKER_FILL);
     BIND_ENUM_CONSTANT(REASON_MAKER_FILL);
     BIND_ENUM_CONSTANT(REASON_LAST_TRADE_PRICE);
+    BIND_ENUM_CONSTANT(REASON_INSUFFICIENT_FUNDS);
+    BIND_ENUM_CONSTANT(REASON_INSUFFICIENT_SHARES);
 
     BIND_ENUM_CONSTANT(EVENT_FIELD_SEQ);
     BIND_ENUM_CONSTANT(EVENT_FIELD_TICK);
@@ -713,6 +745,15 @@ void Simulation::_bind_methods() {
     BIND_ENUM_CONSTANT(DEPTH_FIELD_QTY);
     BIND_ENUM_CONSTANT(DEPTH_FIELD_ORDER_COUNT);
     BIND_ENUM_CONSTANT(DEPTH_STRIDE);
+
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_ID);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_CASH);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_POSITION);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_LIMITED);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_LEVERAGE_PERCENT);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_COMMITTED_BUY);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_COMMITTED_SELL);
+    BIND_ENUM_CONSTANT(ACCOUNT_STRIDE);
 }
 
 } // namespace stocksim::gdext

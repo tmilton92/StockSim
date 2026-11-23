@@ -1,5 +1,6 @@
 #include "stocksim/order_book.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -191,6 +192,27 @@ Qty OrderBook::total_quantity(Side side) const noexcept {
 
 std::size_t OrderBook::level_count(Side side) const noexcept {
     return levels(side).size();
+}
+
+Money OrderBook::cost_to_take(Side side, Qty qty) const {
+    Money cost{};
+    Qty left = qty;
+    const auto take = [&](const auto& entry) {
+        const Qty here = std::min(left, entry.second.total);
+        cost += notional(entry.first, here);
+        left -= here;
+    };
+    const LevelMap& map = levels(side);
+    if (side == Side::kBuy) {
+        for (auto it = map.rbegin(); it != map.rend() && left > Qty{0}; ++it) {
+            take(*it);
+        }
+    } else {
+        for (auto it = map.begin(); it != map.end() && left > Qty{0}; ++it) {
+            take(*it);
+        }
+    }
+    return cost;
 }
 
 bool OrderBook::is_crossed() const {

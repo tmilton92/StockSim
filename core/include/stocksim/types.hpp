@@ -30,9 +30,18 @@ using Qty = StrongQuantity<struct QtyTag, std::int64_t>;
 /// Never assigned to an order.
 inline constexpr OrderId kInvalidOrderId{0};
 
-/// Upper bounds accepted for a single order. They keep price x quantity and cumulative
-/// volume far from int64 overflow.
-inline constexpr PriceTicks kMaxPrice{1'000'000'000'000};
-inline constexpr Qty kMaxOrderQty{1'000'000'000'000};
+/// Cash in the smallest currency unit. One price tick per lot is one unit of money, so the
+/// value of a fill is price ticks x quantity ([notional]).
+using Money = StrongQuantity<struct MoneyTag, std::int64_t>;
+
+/// Upper bounds accepted for a single order. Their product (10^18) keeps any fill's notional
+/// below the int64 limit (about 9.2 x 10^18).
+inline constexpr PriceTicks kMaxPrice{1'000'000'000};
+inline constexpr Qty kMaxOrderQty{1'000'000'000};
+
+/// Value of [qty] at [price]. Within the order limits this cannot overflow.
+[[nodiscard]] constexpr Money notional(PriceTicks price, Qty qty) noexcept {
+    return Money{price.value() * qty.value()};
+}
 
 } // namespace stocksim

@@ -14,3 +14,4 @@ acceptance; supersede with a new ADR instead.
 | [0007](0007-gdextension-bridge.md) | GDExtension bridge, worker thread, and scenario JSON v1 | Accepted |
 | [0008](0008-gdscript-testing-gdunit4.md) | gdUnit4 for GDScript tests, vendored addon, strict script check | Accepted |
 | [0009](0009-lesson-system.md) | Lesson system, scenario format v2, and scenario location | Accepted |
+| [0010](0010-accounts-and-agents.md) | Account ledger, event schema v2, and the agent world | Accepted |
