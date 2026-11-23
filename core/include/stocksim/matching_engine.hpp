@@ -3,6 +3,8 @@
 #include "stocksim/event.hpp"
 #include "stocksim/order.hpp"
 #include "stocksim/order_book.hpp"
+#include "stocksim/result.hpp"
+#include "stocksim/serialization.hpp"
 #include "stocksim/strong_type.hpp"
 #include "stocksim/types.hpp"
 
@@ -67,6 +69,9 @@ public:
     /// Runs steps until idle, then advances to the next tick.
     void step_tick();
 
+    /// Advances to the next tick without performing any steps. Requires `idle()`.
+    void advance_tick();
+
     /// True when no requests, active order, or triggered stops are waiting.
     [[nodiscard]] bool idle() const noexcept;
 
@@ -93,6 +98,21 @@ public:
     [[nodiscard]] std::span<const Event> events() const noexcept { return m_events; }
     /// Discards drained events. Capacity is kept, so steady-state stepping does not allocate.
     void clear_events() noexcept { m_events.clear(); }
+
+    /// Sequence number of the most recent event emitted (0 before the first event).
+    [[nodiscard]] SequenceNumber last_sequence() const noexcept {
+        return SequenceNumber{m_next_sequence - 1};
+    }
+
+    /// Writes the complete engine state (book, pending stops, queued requests, the active
+    /// order, counters, market data). Undrained events are not state and are not written.
+    void save_state(StateWriter& out) const;
+
+    /// Rebuilds an engine from `save_state` output. The restored engine produces exactly the
+    /// same future events as the original given the same inputs. Fails with kCorruptState on
+    /// truncated or inconsistent data.
+    [[nodiscard]] static Result<MatchingEngine> load_state(StateReader& in,
+                                                           const EngineConfig& config = {});
 
 private:
     enum class CommandKind : std::uint8_t { kNew, kCancel, kModify };
@@ -165,6 +185,14 @@ private:
     void activate_triggered_stop();
     void collect_triggered_stops();
     [[nodiscard]] static bool crosses(const ActiveOrder& order, PriceTicks maker_price) noexcept;
+
+    // State loading, one section each (see save_state for the layout).
+    void load_counters(StateReader& in);
+    void load_book(StateReader& in);
+    void load_active(StateReader& in);
+    void load_stops(StateReader& in);
+    void load_commands(StateReader& in);
+    [[nodiscard]] static StopOrder read_stop(StateReader& in);
 
     OrderBook m_book{};
     std::deque<Command> m_commands{};

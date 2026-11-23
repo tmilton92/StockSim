@@ -29,3 +29,8 @@ Set-Location gdext
   expression under clang (breaks godot-cpp's `static_assert`s), and godot-cpp's `/MP` flag is
   reported as unused. `tools/run_clang_tidy.py` passes `-D_CRT_USE_BUILTIN_OFFSETOF` and
   `-Wno-unused-command-line-argument` when it detects `cl.exe`.
+- **clang-tidy 19 `bugprone-exception-escape.IgnoredExceptions` is comma-separated**, unlike
+  most list options, which accept `;`. A `;`-separated value silently matches nothing.
+- **MSVC debug CRT reports failed `assert()`s in a dialog box**, so a failing assert in a test
+  run aborts silently (exit code 3). `core/tests/crt_report_mode.cpp` routes CRT assert/error
+  reports to stderr in debug test builds.

@@ -10,3 +10,4 @@ acceptance; supersede with a new ADR instead.
 | [0003](0003-third-party-submodules.md) | Third-party C++ deps as pinned git submodules | Accepted |
 | [0004](0004-cpp-style-and-naming.md) | C++ formatting and naming conventions | Accepted |
 | [0005](0005-event-schema-v1.md) | Event schema v1 and the step model | Accepted |
+| [0006](0006-snapshots-and-replay.md) | State serialization, snapshots, step-back and determinism checks | Accepted |

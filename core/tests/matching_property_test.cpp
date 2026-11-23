@@ -1,6 +1,7 @@
 // Randomized invariant tests for the matching engine. All randomness comes from the seeded
 // project Rng, so every run (and every failure) is reproducible from the seed shown by Catch2.
 
+#include "random_flow.hpp"
 #include "stocksim/matching_engine.hpp"
 #include "stocksim/rng.hpp"
 #include "test_support.hpp"
@@ -21,10 +22,6 @@ using namespace stocksim;
 
 namespace {
 
-constexpr std::int64_t kMidPrice = 1000;
-constexpr std::int64_t kPriceSpread = 15;
-constexpr std::uint32_t kAccountCount = 6;
-
 /// Per-order quantity ledger rebuilt purely from events.
 struct Ledger {
     Qty placed;
@@ -33,40 +30,12 @@ struct Ledger {
     Qty cancelled;
 };
 
-NewOrder random_order(Rng& rng) {
-    const AccountId account{static_cast<std::uint32_t>(rng.uniform_below(kAccountCount)) + 1};
-    const Side side = rng.chance(1, 2) ? Side::kBuy : Side::kSell;
-    const Qty qty{rng.uniform_int(1, 50)};
-    const PriceTicks price{rng.uniform_int(kMidPrice - kPriceSpread, kMidPrice + kPriceSpread)};
-    const PriceTicks other{rng.uniform_int(kMidPrice - kPriceSpread, kMidPrice + kPriceSpread)};
-    const std::uint64_t roll = rng.uniform_below(100);
-    NewOrder order{.account = account, .side = side, .qty = qty};
-    if (roll < 60) {
-        order.type = OrderType::kLimit;
-        order.limit_price = price;
-    } else if (roll < 75) {
-        order.type = OrderType::kMarket;
-    } else if (roll < 88) {
-        order.type = OrderType::kStop;
-        order.stop_price = price;
-    } else if (roll < 97) {
-        order.type = OrderType::kStopLimit;
-        order.stop_price = price;
-        order.limit_price = other;
-    } else {
-        order.type = OrderType::kLimit;
-        order.qty = Qty{rng.uniform_int(-2, 0)}; // occasionally invalid
-        order.limit_price = price;
-    }
-    return order;
-}
-
 /// Feeds a random stream of requests, interleaving single steps and whole ticks, and returns
 /// every event emitted. Invariants that must hold between steps are checked as it runs.
 std::vector<Event> run_session(std::uint64_t seed, int request_count) {
-    Rng rng{seed};
+    test::RandomFlow flow{seed};
+    Rng& rng = flow.rng();
     MatchingEngine engine;
-    std::vector<OrderId> issued;
     std::vector<Event> all_events;
 
     const auto drain = [&] {
@@ -76,21 +45,7 @@ std::vector<Event> run_session(std::uint64_t seed, int request_count) {
     };
 
     for (int request = 0; request < request_count; ++request) {
-        const std::uint64_t roll = rng.uniform_below(100);
-        if (roll < 75 || issued.empty()) {
-            issued.push_back(engine.submit(random_order(rng)));
-        } else {
-            const OrderId target = issued[rng.uniform_below(issued.size())];
-            const AccountId requester{static_cast<std::uint32_t>(rng.uniform_below(2)) + 1};
-            if (roll < 90) {
-                engine.cancel(requester, target);
-            } else {
-                engine.modify(
-                    requester, target,
-                    PriceTicks{rng.uniform_int(kMidPrice - kPriceSpread, kMidPrice + kPriceSpread)},
-                    Qty{rng.uniform_int(1, 60)});
-            }
-        }
+        flow.issue_request(engine);
 
         if (rng.chance(1, 3)) {
             engine.step_tick();

@@ -45,10 +45,14 @@ capital from retail traders — including the player.
   `std::map` levels (profile first, per CLAUDE.md)
 
 ## 2. Snapshots & replay
-- [ ] Full-state serialization of core
-- [ ] Snapshot every N ticks
-- [ ] `step_back()` = restore nearest snapshot + replay forward
-- [ ] Determinism test: same seed → identical event log hash
+- [x] Full-state serialization of core (versioned binary format; ADR 0006)
+- [x] Snapshot every N ticks
+- [x] `step_back()` = restore nearest snapshot + replay forward (plus redo and branching)
+- [x] Determinism test: same seed → identical event log hash (pinned golden digest, run on
+  all three CI platforms)
+- [ ] Bound history memory: snapshot thinning / journal compaction for long sessions
+- [ ] Export/import the journal as a replay file (with §12 structured event log export)
+- [ ] Include RNG and agent state in snapshots and the journal when agents land (§6)
 
 ## 3. GDExtension bridge
 - [ ] Expose `Simulation` node: init(config), step_event, step_tick, step_back, run(speed)

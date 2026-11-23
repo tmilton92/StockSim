@@ -33,6 +33,10 @@ WarningsAsErrors: '*'
 HeaderFilterRegex: '(core|gdext)[/\](include|src|tests)[/\].*'
 FormatStyle: file
 CheckOptions:
+  # Implicit move operations of types holding standard containers can reach the allocator's
+  # visible `throw std::bad_array_new_length` (MSVC STL); allocation failure is fatal by
+  # design and never handled. Note: this option is comma-separated in clang-tidy 19.
+  - { key: bugprone-exception-escape.IgnoredExceptions, value: 'bad_alloc,bad_array_new_length' }
   - { key: readability-identifier-naming.NamespaceCase,              value: lower_case }
   - { key: readability-identifier-naming.ClassCase,                  value: CamelCase  }
   - { key: readability-identifier-naming.StructCase,                 value: CamelCase  }

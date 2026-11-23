@@ -71,6 +71,28 @@ public:
     /// True if best bid >= best ask. Never true after the matching engine finishes a step.
     [[nodiscard]] bool is_crossed() const;
 
+    /// Calls `visit(const RestingOrder&)` for every order on `side` in priority order: best
+    /// price first, then arrival order within a price. Re-adding orders in this order rebuilds
+    /// an equivalent book (used by serialization).
+    template <typename Visitor>
+    void for_each_in_priority(Side side, const Visitor& visit) const {
+        const auto visit_level = [&](const Level& level) {
+            for (std::uint32_t index = level.head; index != kNil; index = m_nodes[index].next) {
+                visit(m_nodes[index].order);
+            }
+        };
+        const LevelMap& map = levels(side);
+        if (side == Side::kBuy) {
+            for (auto it = map.rbegin(); it != map.rend(); ++it) {
+                visit_level(it->second);
+            }
+        } else {
+            for (const auto& entry : map) {
+                visit_level(entry.second);
+            }
+        }
+    }
+
 private:
     static constexpr std::uint32_t kNil = std::numeric_limits<std::uint32_t>::max();
 

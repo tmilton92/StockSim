@@ -13,19 +13,27 @@ add_library(stocksim::core ALIAS stocksim_core)
 target_sources(
     stocksim_core
     PRIVATE
+        src/event_hash.cpp
         src/matching_engine.cpp
+        src/matching_engine_state.cpp
         src/names.cpp
         src/order_book.cpp
         src/rng.cpp
+        src/serialization.cpp
+        src/simulation.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include "${STOCKSIM_GENERATED_INCLUDE_DIR}"
         FILES
             include/stocksim/event.hpp
+            include/stocksim/event_hash.hpp
             include/stocksim/matching_engine.hpp
             include/stocksim/order.hpp
             include/stocksim/order_book.hpp
+            include/stocksim/result.hpp
             include/stocksim/rng.hpp
+            include/stocksim/serialization.hpp
+            include/stocksim/simulation.hpp
             include/stocksim/strong_type.hpp
             include/stocksim/types.hpp
             "${STOCKSIM_GENERATED_INCLUDE_DIR}/stocksim/version.hpp"

@@ -53,6 +53,11 @@ bool MatchingEngine::step_event() {
 void MatchingEngine::step_tick() {
     while (step_event()) {
     }
+    advance_tick();
+}
+
+void MatchingEngine::advance_tick() {
+    assert(idle() && "advance_tick requires all queued work to be finished");
     m_previous_tick_volume = m_tick_volume;
     m_tick_volume = Qty{0};
     m_tick += Tick{1};
