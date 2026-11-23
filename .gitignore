@@ -28,3 +28,8 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Temporary project-setting overrides written by tools/godot_check.py
+/game/override.cfg
+# gdUnit4 default report output
+/game/reports/

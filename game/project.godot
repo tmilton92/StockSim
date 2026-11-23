@@ -11,8 +11,13 @@ config_version=5
 [application]
 
 config/name="stocksim"
+run/main_scene="res://main/main_screen.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+SimBridge="*res://autoload/sim_bridge.gd"
 
 [debug]
 
@@ -25,8 +30,14 @@ gdscript/warnings/unsafe_call_argument=2
 
 [display]
 
+window/size/viewport_width=1440
+window/size/viewport_height=900
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom="res://theme/stocksim_theme.tres"
 
 [physics]
 
@@ -35,3 +46,4 @@ window/stretch/aspect="expand"
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+environment/defaults/default_clear_color=Color(0.0588, 0.0667, 0.0824, 1)

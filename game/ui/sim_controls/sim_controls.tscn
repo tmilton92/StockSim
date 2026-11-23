@@ -1,0 +1,72 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/sim_controls/sim_controls.gd" id="1_script"]
+
+[node name="SimControls" type="PanelContainer"]
+offset_right = 760.0
+offset_bottom = 44.0
+script = ExtResource("1_script")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="RunButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+tooltip_text = "Run the simulation continuously at the selected speed."
+toggle_mode = true
+text = "Run"
+
+[node name="StepEventButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Perform one step: one order accepted, one trade, or one stop triggered."
+text = "Step"
+
+[node name="StepTickButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Process everything waiting, then advance to the next tick."
+text = "Tick"
+
+[node name="StepBackButton" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Undo the last step."
+text = "Back"
+
+[node name="SeparatorSpeed" type="VSeparator" parent="Row"]
+layout_mode = 2
+
+[node name="SpeedCaption" type="Label" parent="Row"]
+layout_mode = 2
+theme_type_variation = &"PanelTitle"
+text = "Speed"
+
+[node name="SpeedSlider" type="HSlider" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Steps per second, from 1 to 10,000; far right runs as fast as possible."
+max_value = 4.05
+step = 0.05
+value = 1.0
+
+[node name="SpeedLabel" type="Label" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+theme_type_variation = &"Monospace"
+text = "10/s"
+
+[node name="SeparatorStatus" type="VSeparator" parent="Row"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Monospace"
+text = "tick 0   event #0"

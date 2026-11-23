@@ -24,7 +24,7 @@ capital from retail traders — including the player.
 - [ ] CI: confirm the workflow passes on GitHub after the first push (no remote configured yet)
 - [x] Code style / clang-format (+ clang-tidy naming rules; ADR 0004)
 - [x] project.godot: untyped_declaration, inferred_declaration, unsafe_* warnings set to Error
-- [ ] Choose GDScript test framework (gdUnit4 or GUT) and record an ADR
+- [x] Choose GDScript test framework (gdUnit4 or GUT) and record an ADR (gdUnit4; ADR 0008)
 - [ ] CI: add a benchmark job once core has a benchmarkable step loop (CLAUDE.md targets)
 - [ ] Remove the `extension_list.cfg` first-import workaround in `tools/godot_check.py` once
   the pinned Godot includes the fix for godotengine/godot#123511 (docs/VERSIONS.md)
@@ -66,16 +66,23 @@ capital from retail traders — including the player.
 - [ ] Query API: ownership lookup once owners exist in core (§8)
 - [x] Config from scenario JSON (format v1: `docs/scenario-format.md`, `/scenarios`)
 - [ ] Decide how `/scenarios` files are packaged into exported builds (res:// access) (§5)
-- [ ] Typed GDScript wrapper for event rows in the game layer (§4)
+- [x] Typed GDScript wrapper for event rows in the game layer (§4: `SimEvent`)
 
 ## 4. Godot: base visualization
-- [ ] Main layout: chart, order book ladder, trade tape, narration panel, controls
-- [ ] Controls: play/pause, step event, step tick, step back, speed slider
-- [ ] Order book ladder with animated depth bars + fill flashes
-- [ ] Price chart (candles + last-trade line)
-- [ ] Trade tape
-- [ ] Narration panel showing event reasons; highlight related order/account/price
-- [ ] Inspector panel: click any account or order
+- [x] Main layout: chart, order book ladder, trade tape, narration panel, controls
+  (`main/main_screen.tscn`; dark terminal theme in `theme/stocksim_theme.tres`)
+- [x] Controls: play/pause, step event, step tick, step back, speed slider
+- [x] Order book ladder with animated depth bars + fill flashes
+- [x] Price chart (candles + last-trade line)
+- [x] Trade tape
+- [x] Narration panel showing event reasons; highlight related order/account/price
+- [x] Inspector panel: click any account or order (and price levels)
+- [x] Debug order ticket + "Seed book" so there is a market before agents (stand-in for §10)
+- [x] `SimBridge` autoload, typed `SimEvent`/`EventLog` model (closes the §3 wrapper item)
+- [ ] Account inspector: cash, position and P&L once accounts exist in core (§7/§10)
+- [ ] Cap or window the in-memory event log and rebuild cost for long sessions (with §2 history)
+- [ ] Chart: time axis labels, zoom/scroll through history
+- [ ] Narration: filter (e.g. hide fill lines) and group events of one step
 
 ## 5. Lesson system
 - [ ] Scenario format: initial state, enabled features, narration cues, pause points

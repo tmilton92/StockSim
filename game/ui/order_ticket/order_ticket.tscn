@@ -1,0 +1,105 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/order_ticket/order_ticket.gd" id="1_script"]
+
+[node name="OrderTicket" type="PanelContainer"]
+offset_right = 320.0
+offset_bottom = 260.0
+script = ExtResource("1_script")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"PanelTitle"
+text = "ORDER TICKET"
+
+[node name="Form" type="GridContainer" parent="Column"]
+layout_mode = 2
+columns = 2
+
+[node name="AccountCaption" type="Label" parent="Column/Form"]
+layout_mode = 2
+text = "Account"
+
+[node name="AccountSpin" type="SpinBox" parent="Column/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 9999.0
+value = 1.0
+
+[node name="SideCaption" type="Label" parent="Column/Form"]
+layout_mode = 2
+text = "Side"
+
+[node name="SideOption" type="OptionButton" parent="Column/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TypeCaption" type="Label" parent="Column/Form"]
+layout_mode = 2
+text = "Type"
+
+[node name="TypeOption" type="OptionButton" parent="Column/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="QtyCaption" type="Label" parent="Column/Form"]
+layout_mode = 2
+text = "Quantity"
+
+[node name="QtySpin" type="SpinBox" parent="Column/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 1000000.0
+value = 10.0
+
+[node name="LimitCaption" type="Label" parent="Column/Form"]
+layout_mode = 2
+text = "Limit price"
+
+[node name="LimitEdit" type="LineEdit" parent="Column/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "100.00"
+placeholder_text = "100.00"
+
+[node name="StopCaption" type="Label" parent="Column/Form"]
+layout_mode = 2
+text = "Stop price"
+
+[node name="StopEdit" type="LineEdit" parent="Column/Form"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "99.00"
+placeholder_text = "99.00"
+
+[node name="Buttons" type="HBoxContainer" parent="Column"]
+layout_mode = 2
+
+[node name="SubmitButton" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Queue this order. It is processed on the next step."
+text = "Submit order"
+
+[node name="SeedButton" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Place a ladder of resting limit orders on both sides of 100.00."
+text = "Seed book"
+
+[node name="ErrorLabel" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ErrorText"
+autowrap_mode = 3

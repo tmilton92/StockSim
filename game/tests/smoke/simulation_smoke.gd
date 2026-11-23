@@ -125,7 +125,8 @@ func _test_trading() -> void:
 
 	var order: PackedInt64Array = sim.get_order(ask)
 	_check(order.size() == Simulation.ORDER_STRIDE, "resting order is visible")
-	_check(order[Simulation.ORDER_FIELD_STATUS] == Simulation.ORDER_STATUS_RESTING, "status resting")
+	_check(order[Simulation.ORDER_FIELD_STATUS] == Simulation.ORDER_STATUS_RESTING,
+		"status resting")
 	_check(order[Simulation.ORDER_FIELD_REMAINING] == 2, "remaining after partial fill")
 	_check(order[Simulation.ORDER_FIELD_FILLED] == 3, "filled quantity")
 

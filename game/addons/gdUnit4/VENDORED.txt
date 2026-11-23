@@ -1,0 +1,6 @@
+Vendored by tools/vendor_gdunit4.py
+repository: https://github.com/godot-gdunit-labs/gdUnit4
+tag: v6.2.3
+commit: f2e4f8679ebd28e27ef523a4fb7b09e8337bfce9
+excluded: test, CLAUDE.md, AGENTS.md, llms.txt, llms-full.txt, .cursorrules
+Do not edit files in this directory; re-run the script instead.

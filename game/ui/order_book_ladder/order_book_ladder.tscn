@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/order_book_ladder/order_book_ladder.gd" id="1_script"]
+
+[node name="OrderBookLadder" type="Control"]
+custom_minimum_size = Vector2(280, 240)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+tooltip_text = "Order book: asks above, bids below. Click a price to inspect it."
+script = ExtResource("1_script")

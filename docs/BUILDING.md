@@ -51,3 +51,19 @@ python tools/fill_class_docs.py "$env:TEMP\stocksim-doc\doc_classes\Simulation.x
 
 `fill_class_docs.py` refuses to write the file if any method, signal or constant is
 undocumented, or if a description refers to something that no longer exists.
+
+## Running the game and its tests
+
+- Open `game/project.godot` in Godot 4.7.2 and press F5. Each UI scene in `game/ui` also runs on
+  its own (F6) with sample data from a private simulation.
+- GDScript unit tests (gdUnit4) run as part of `tools/godot_check.py`, or directly:
+
+```powershell
+& "<path>\Godot_v4.7.2-stable_win64_console.exe" --headless --path game -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --ignoreHeadlessMode -c -a res://tests/unit
+```
+
+- Visual check (opens a window, saves a screenshot after a short scripted session):
+
+```powershell
+& "<path>\Godot_v4.7.2-stable_win64_console.exe" --path game --resolution 1440x900 res://tests/visual/main_screen_capture.tscn -- "$env:TEMP\main_screen.png"
+```

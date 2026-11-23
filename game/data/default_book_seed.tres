@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="OrderLadderSeed" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/order_ladder_seed.gd" id="1_seed"]
+
+[resource]
+script = ExtResource("1_seed")
+mid_price = 10000
+levels = 5
+spacing = 5
+base_qty = 10
+qty_step = 5
+bid_account = 101
+ask_account = 102

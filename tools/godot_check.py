@@ -10,9 +10,12 @@ Steps (all must pass):
   3. The class reference XML in gdext/doc_classes matches the bindings: Godot regenerates the
      skeleton from the loaded extension and tools/fill_class_docs.py fills it from the
      *.docs.json descriptions; the result must equal the committed XML.
-  4. The Simulation smoke test (game/tests/smoke) passes. It announces each deliberately
+  4. Every project script compiles with all GDScript warnings raised to errors (a temporary
+     game/override.cfg), inside a real run so autoload names resolve.
+  5. The Simulation smoke test (game/tests/smoke) passes. It announces each deliberately
      triggered engine error with "EXPECT_ERROR: <text>"; every logged error must match one
      announcement and every announcement must be matched. Warnings are never allowed.
+  6. The gdUnit4 suites in game/tests/unit pass with no errors or warnings.
 """
 
 from __future__ import annotations
@@ -37,6 +40,33 @@ WARNING_START = re.compile(r"^\s*(WARNING|USER WARNING|SCRIPT WARNING):")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fill_class_docs import fill  # noqa: E402  (sibling tool, imported after path setup)
+
+LIST_WARNINGS_SCRIPT = """extends SceneTree
+
+
+func _init() -> void:
+	for property: Dictionary in ProjectSettings.get_property_list():
+		var name: String = property["name"]
+		var value: Variant = ProjectSettings.get_setting(name)
+		if name.begins_with("debug/gdscript/warnings/") and typeof(value) == TYPE_INT \\
+				and value == 1:
+			print("WARN_SETTING=", name)
+	quit()
+"""
+
+STRICT_CHECK_SCRIPT = """extends SceneTree
+
+
+func _initialize() -> void:
+	var checked: int = 0
+	for path: String in OS.get_cmdline_user_args():
+		var script: Resource = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+		if script == null:
+			print("STRICT_FAILED=", path)
+		checked += 1
+	print("STRICT_CHECKED=", checked)
+	quit()
+"""
 
 PROBE_SCRIPT = """extends SceneTree
 
@@ -123,6 +153,49 @@ def check_extension_loads(binary: str) -> None:
         raise CheckFailed(f"{EXTENSION} was not loaded (loaded: {loaded})")
 
 
+def project_scripts() -> list[str]:
+    """res:// paths of every GDScript in the project, excluding addons and the cache."""
+    return sorted(
+        "res://" + path.relative_to(GAME_DIR).as_posix()
+        for path in GAME_DIR.rglob("*.gd")
+        if not {"addons", ".godot"} & set(path.relative_to(GAME_DIR).parts)
+    )
+
+
+def strict_warning_overrides(binary: str) -> str:
+    """override.cfg content raising every Warn-level GDScript warning to Error."""
+    with tempfile.TemporaryDirectory() as tmp:
+        probe = Path(tmp) / "list_warnings.gd"
+        probe.write_text(LIST_WARNINGS_SCRIPT, encoding="utf-8")
+        run = godot(binary, ["--script", str(probe)])
+    require_clean(run, "warning settings probe")
+    names = re.findall(r"^WARN_SETTING=debug/gdscript/warnings/(\S+)$", run.output, re.M)
+    if not names:
+        raise CheckFailed("found no Warn-level GDScript warnings to raise")
+    lines = [f"gdscript/warnings/{name}=2" for name in names]
+    return "[debug]\n\n" + "\n".join(lines) + "\n"
+
+
+def check_scripts_strict(binary: str) -> None:
+    """Compiles every project script with all warnings treated as errors. Runs a real script
+    session (not --check-only) so autoload names such as SimBridge resolve."""
+    scripts = project_scripts()
+    override = GAME_DIR / "override.cfg"
+    if override.exists():
+        raise CheckFailed(f"{override} already exists; remove it before running checks")
+    override.write_text(strict_warning_overrides(binary), encoding="utf-8")
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = Path(tmp) / "strict_check.gd"
+            probe.write_text(STRICT_CHECK_SCRIPT, encoding="utf-8")
+            run = godot(binary, ["--script", str(probe), "--", *scripts])
+    finally:
+        override.unlink()
+    require_clean(run, "strict script check")
+    if f"STRICT_CHECKED={len(scripts)}" not in run.output:
+        raise CheckFailed("strict script check did not load every script")
+
+
 def check_class_docs(binary: str) -> None:
     import json
 
@@ -173,6 +246,19 @@ def check_smoke_test(binary: str) -> None:
         raise CheckFailed("\n".join(problems))
 
 
+def check_gdunit_tests(binary: str) -> None:
+    """Runs the gdUnit4 suites in game/tests/unit (docs/adr/0008). Exit codes: 0 pass,
+    100 failures, 101 warnings, 103 headless refused, 104 unsupported Godot, 105 script errors."""
+    with tempfile.TemporaryDirectory() as reports:
+        run = godot(binary, [
+            "-s", "res://addons/gdUnit4/bin/GdUnitCmdTool.gd", "--ignoreHeadlessMode",
+            "-c", "-a", "res://tests/unit", "-rd", reports,
+        ])
+    require_clean(run, "gdUnit4 tests")
+    if not re.search(r"Overall Summary: \d+ test cases \| 0 errors \| 0 failures", run.output):
+        raise CheckFailed("gdUnit4 did not report a clean overall summary")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--godot", required=True, help="Godot 4.7.2 editor binary")
@@ -181,7 +267,9 @@ def main() -> int:
         ("import", check_import),
         ("extension load", check_extension_loads),
         ("class docs", check_class_docs),
+        ("strict scripts", check_scripts_strict),
         ("smoke test", check_smoke_test),
+        ("gdUnit4 tests", check_gdunit_tests),
     ]
     for name, step in steps:
         try:

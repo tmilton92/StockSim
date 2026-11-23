@@ -1,0 +1,26 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/narration_panel/narration_panel.gd" id="1_script"]
+
+[node name="NarrationPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(360, 160)
+offset_right = 640.0
+offset_bottom = 300.0
+script = ExtResource("1_script")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Column"]
+layout_mode = 2
+theme_type_variation = &"PanelTitle"
+text = "WHAT JUST HAPPENED"
+
+[node name="Text" type="RichTextLabel" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 2
+bbcode_enabled = true
+scroll_following = true
+selection_enabled = true

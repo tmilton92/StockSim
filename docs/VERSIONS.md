@@ -7,6 +7,7 @@ Upgrade the engine and godot-cpp together, never one alone (see CLAUDE.md and AD
 | Godot engine | **4.7.2-stable** (`v4.7.2.stable.official.ed1daf0bf`) | Linux zip SHA-512 pinned in `.github/workflows/ci.yml` |
 | godot-cpp | `10.0.0-stable` (`507ed9d840c01a3c5b2a39af8bb4000bfac30bf5`) | Built against `gdext/extension_api.json` dumped from the engine above |
 | Catch2 | `v3.16.1` (`08092139210881f01a34e60c5f2fd6afa0ea4024`) | |
+| gdUnit4 | `v6.2.3` (`f2e4f8679ebd28e27ef523a4fb7b09e8337bfce9`) | Vendored in `game/addons/gdUnit4` by `tools/vendor_gdunit4.py` (ADR 0008) |
 | C++ standard | C++20 | godot-cpp itself builds as C++17 |
 | CMake | 3.25 minimum | Dev machine: 3.31.6 (bundled with VS 2022 Build Tools) |
 | MSVC | 14.44 (VS 2022 Build Tools) | |

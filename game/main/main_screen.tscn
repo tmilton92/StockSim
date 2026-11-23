@@ -1,0 +1,92 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://main/main_screen.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://ui/sim_controls/sim_controls.tscn" id="2_controls"]
+[ext_resource type="PackedScene" path="res://ui/price_chart/price_chart.tscn" id="3_chart"]
+[ext_resource type="PackedScene" path="res://ui/order_book_ladder/order_book_ladder.tscn" id="4_ladder"]
+[ext_resource type="PackedScene" path="res://ui/trade_tape/trade_tape.tscn" id="5_tape"]
+[ext_resource type="PackedScene" path="res://ui/narration_panel/narration_panel.tscn" id="6_narration"]
+[ext_resource type="PackedScene" path="res://ui/inspector_panel/inspector_panel.tscn" id="7_inspector"]
+[ext_resource type="PackedScene" path="res://ui/order_ticket/order_ticket.tscn" id="8_ticket"]
+
+[node name="MainScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+
+[node name="SimControls" parent="Margin/Layout" instance=ExtResource("2_controls")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Body" type="HSplitContainer" parent="Margin/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Left" type="VSplitContainer" parent="Margin/Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ChartPanel" type="PanelContainer" parent="Margin/Layout/Body/Left"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.4
+
+[node name="PriceChart" parent="Margin/Layout/Body/Left/ChartPanel" instance=ExtResource("3_chart")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Feeds" type="HSplitContainer" parent="Margin/Layout/Body/Left"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TradeTape" parent="Margin/Layout/Body/Left/Feeds" instance=ExtResource("5_tape")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="NarrationPanel" parent="Margin/Layout/Body/Left/Feeds" instance=ExtResource("6_narration")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Right" type="VBoxContainer" parent="Margin/Layout/Body"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+
+[node name="BookPanel" type="PanelContainer" parent="Margin/Layout/Body/Right"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="OrderBookLadder" parent="Margin/Layout/Body/Right/BookPanel" instance=ExtResource("4_ladder")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderTicket" parent="Margin/Layout/Body/Right" instance=ExtResource("8_ticket")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="InspectorPanel" parent="Margin/Layout/Body/Right" instance=ExtResource("7_inspector")]
+unique_name_in_owner = true
+layout_mode = 2
