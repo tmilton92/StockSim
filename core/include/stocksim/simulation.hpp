@@ -26,7 +26,7 @@ struct SimulationConfig {
     /// disables periodic snapshots, so `step_back()` replays from the start.
     std::int64_t snapshot_interval_ticks = 64;
     /// The simulated crowd. None by default: only explicit inputs trade.
-    std::optional<AgentWorldConfig> agents;
+    std::optional<AgentWorldConfig> agents{};
 };
 
 /// Checks every field of `config` against its allowed range. Returns the first problem found,

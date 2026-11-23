@@ -60,10 +60,10 @@ struct MarketView {
     Tick tick{};
     /// Last trade price, or the mid of the best quotes, or the opening reference.
     PriceTicks reference{};
-    std::optional<PriceTicks> best_bid;
-    std::optional<PriceTicks> best_ask;
+    std::optional<PriceTicks> best_bid{};
+    std::optional<PriceTicks> best_ask{};
     /// Reference price at the end of each recent tick, oldest first (at least one entry).
-    std::span<const PriceTicks> history;
+    std::span<const PriceTicks> history{};
     Qty taker_buy_volume{};
     Qty taker_sell_volume{};
     /// The hidden true value. Only value traders read it, through their own noise.
@@ -75,9 +75,9 @@ struct MarketView {
 struct AgentDecision {
     bool cancel_working = false;
     bool cancel_stop = false;
-    std::optional<NewOrder> order;
+    std::optional<NewOrder> order{};
     /// A protective sell stop covering the agent's whole position.
-    std::optional<NewOrder> stop;
+    std::optional<NewOrder> stop{};
 };
 
 /// Decides agent [index]'s action. Pure: reads only its arguments, so every style can be
