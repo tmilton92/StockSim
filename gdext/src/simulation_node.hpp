@@ -13,6 +13,7 @@
 #include <godot_cpp/variant/packed_int64_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <memory>
@@ -212,6 +213,10 @@ private:
     void worker_main();
     /// Wakes the worker after the consumer freed ring space or run state changed.
     void wake_worker();
+    /// Locks m_mutex for any thread other than the worker. Registers as a waiter first, so the
+    /// unthrottled worker hands the lock over instead of re-taking it straight away (std::mutex
+    /// is not fair: on Linux the worker could otherwise starve the main thread for seconds).
+    [[nodiscard]] std::unique_lock<std::mutex> lock_for_caller() const;
 
     // Main-thread-only state.
     ScenarioSettings m_settings;
@@ -221,6 +226,8 @@ private:
 
     // Shared state, guarded by m_mutex.
     mutable std::mutex m_mutex;
+    /// Threads blocked in lock_for_caller(); the worker yields until this is zero.
+    mutable std::atomic<int> m_lock_waiters{0};
     std::condition_variable m_wake;
     std::unique_ptr<stocksim::Simulation> m_simulation;
     std::unique_ptr<stocksim::EventRing> m_ring; ///< Pointer changes only under the lock.

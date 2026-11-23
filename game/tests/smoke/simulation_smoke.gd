@@ -288,7 +288,9 @@ func _test_backpressure() -> void:
 		rows.append_array(sim.drain_events(16))
 		OS.delay_msec(1)
 	sim.pause()
-	_check(rows.size() == expected_events * Simulation.EVENT_STRIDE, "every event delivered")
+	_check(rows.size() == expected_events * Simulation.EVENT_STRIDE,
+		"every event delivered (got %d values, want %d)" % [rows.size(),
+			expected_events * Simulation.EVENT_STRIDE])
 	_check(_sequences_contiguous(rows, 1), "delivered in order without loss")
 	sim.free()
 
