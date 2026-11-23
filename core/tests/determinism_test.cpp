@@ -18,9 +18,11 @@ using namespace stocksim::test;
 
 namespace {
 
-// Pinned results of run_session(2024); see the golden test below.
+// Pinned results of run_session(2024); see the golden test below. Re-pinned after RandomFlow
+// stopped drawing two random values in one argument list (unspecified evaluation order: MSVC and
+// GCC disagreed with Clang). This value is what macOS/Clang produced before the fix.
 constexpr std::uint64_t kGoldenEventCount = 1435;
-constexpr std::uint64_t kGoldenDigest = 0xA58F192449769A62ULL;
+constexpr std::uint64_t kGoldenDigest = 0xE34DCD53D92C4FBAULL;
 
 struct SessionDigest {
     std::uint64_t digest = 0;
