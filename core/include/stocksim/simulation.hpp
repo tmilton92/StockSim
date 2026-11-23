@@ -8,10 +8,15 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
 namespace stocksim {
+
+/// Limits accepted by `validate(SimulationConfig)`.
+inline constexpr std::size_t kMaxCapacityHint = std::size_t{1} << 24;
+inline constexpr std::int64_t kMaxSnapshotIntervalTicks = 1'000'000;
 
 struct SimulationConfig {
     EngineConfig engine{};
@@ -19,6 +24,18 @@ struct SimulationConfig {
     /// Bounds the replay cost of `step_back()` to about this many ticks of work. Zero or less
     /// disables periodic snapshots, so `step_back()` replays from the start.
     std::int64_t snapshot_interval_ticks = 64;
+};
+
+/// Checks every field of `config` against its allowed range. Returns the first problem found,
+/// or nullopt if the configuration is valid.
+[[nodiscard]] std::optional<Error> validate(const SimulationConfig& config) noexcept;
+
+/// What `Simulation::advance()` did.
+enum class AdvanceResult : std::uint8_t {
+    /// One engine step was performed (or redone).
+    kStepped,
+    /// The tick advanced (live, or redone from the journal).
+    kTickAdvanced,
 };
 
 /// The simulation as driven by the game: a `MatchingEngine` plus a journal of every input and
@@ -46,6 +63,9 @@ public:
     bool step_event();
     /// Performs (or redoes) steps until the tick advances.
     void step_tick();
+    /// Performs exactly one unit of work: one step if there is one, otherwise the tick advance.
+    /// Never emits more than `kMaxEventsPerStep` events. This is what continuous runners use.
+    AdvanceResult advance();
     /// Undoes the most recent step. Returns false if already at the beginning.
     bool step_back();
 

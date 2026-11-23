@@ -212,3 +212,59 @@ TEST_CASE("new input after step_back discards the recorded future", "[simulation
     }
     CHECK(sim.save() == branch_end);
 }
+
+TEST_CASE("advance performs one step, or the tick advance when idle", "[simulation]") {
+    Simulation sim;
+    CHECK(sim.advance() == AdvanceResult::kTickAdvanced); // nothing to do: time moves on
+    CHECK(sim.engine().current_tick() == Tick{1});
+
+    sim.submit(limit(kAlice, Side::kSell, 100, 5));
+    CHECK(sim.advance() == AdvanceResult::kStepped); // accepted
+    CHECK(sim.advance() == AdvanceResult::kStepped); // rested
+    CHECK(sim.advance() == AdvanceResult::kTickAdvanced);
+    CHECK(sim.engine().current_tick() == Tick{2});
+
+    // Redo reports tick advances replayed from the journal as tick advances too.
+    REQUIRE(sim.step_back());
+    CHECK(sim.advance() == AdvanceResult::kTickAdvanced);
+    CHECK_FALSE(sim.has_redo());
+}
+
+TEST_CASE("advance never emits more than kMaxEventsPerStep events", "[simulation]") {
+    Simulation sim;
+    RandomFlow flow{404};
+    for (int i = 0; i < 3000; ++i) {
+        if (flow.rng().chance(1, 2)) {
+            flow.issue_request(sim);
+        }
+        sim.advance();
+        REQUIRE(sim.events().size() <= kMaxEventsPerStep);
+        sim.clear_events();
+    }
+}
+
+TEST_CASE("simulation config validation", "[simulation][config]") {
+    CHECK_FALSE(validate(SimulationConfig{}).has_value());
+
+    SimulationConfig config;
+    config.snapshot_interval_ticks = -1;
+    REQUIRE(validate(config).has_value());
+    CHECK(validate(config)->code == ErrorCode::kInvalidConfig);
+
+    config = SimulationConfig{};
+    config.snapshot_interval_ticks = kMaxSnapshotIntervalTicks + 1;
+    CHECK(validate(config).has_value());
+
+    config = SimulationConfig{};
+    config.engine.expected_orders = kMaxCapacityHint + 1;
+    CHECK(validate(config).has_value());
+
+    config = SimulationConfig{};
+    config.engine.expected_events = kMaxCapacityHint + 1;
+    CHECK(validate(config).has_value());
+
+    config = SimulationConfig{};
+    config.snapshot_interval_ticks = 0;
+    config.engine.expected_orders = kMaxCapacityHint;
+    CHECK_FALSE(validate(config).has_value());
+}

@@ -26,6 +26,8 @@ capital from retail traders — including the player.
 - [x] project.godot: untyped_declaration, inferred_declaration, unsafe_* warnings set to Error
 - [ ] Choose GDScript test framework (gdUnit4 or GUT) and record an ADR
 - [ ] CI: add a benchmark job once core has a benchmarkable step loop (CLAUDE.md targets)
+- [ ] Remove the `extension_list.cfg` first-import workaround in `tools/godot_check.py` once
+  the pinned Godot includes the fix for godotengine/godot#123511 (docs/VERSIONS.md)
 
 ## 1. Core: order book & matching (C++)
 - [x] Types: Price (fixed-point ticks), Qty, AccountId, OwnerId, OrderId, Tick
@@ -55,10 +57,16 @@ capital from retail traders — including the player.
 - [ ] Include RNG and agent state in snapshots and the journal when agents land (§6)
 
 ## 3. GDExtension bridge
-- [ ] Expose `Simulation` node: init(config), step_event, step_tick, step_back, run(speed)
-- [ ] Ring buffer of events pulled by Godot each frame
-- [ ] Query API: book depth, account state, order lookup, ownership lookup
-- [ ] Config from scenario resource/JSON
+- [x] Expose `Simulation` node: init(config), step_event, step_tick, step_back, run(speed)
+  (`configure`/`load_scenario`, `run(steps_per_second)` on a worker thread, `pause`; ADR 0007)
+- [x] Ring buffer of events pulled by Godot each frame (lock-free SPSC `EventRing` with
+  backpressure; `drain_events()` returns packed rows)
+- [x] Query API: book depth, order lookup (+ last price, best bid/ask, volume, tick)
+- [ ] Query API: account state (cash, position, margin) once accounts exist in core (§7/§10)
+- [ ] Query API: ownership lookup once owners exist in core (§8)
+- [x] Config from scenario JSON (format v1: `docs/scenario-format.md`, `/scenarios`)
+- [ ] Decide how `/scenarios` files are packaged into exported builds (res:// access) (§5)
+- [ ] Typed GDScript wrapper for event rows in the game layer (§4)
 
 ## 4. Godot: base visualization
 - [ ] Main layout: chart, order book ladder, trade tape, narration panel, controls

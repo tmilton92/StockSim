@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -21,6 +22,23 @@ constexpr Error kTrailingBytes{.code = ErrorCode::kCorruptState,
                                .message = "State has unexpected data after the engine state."};
 
 } // namespace
+
+std::optional<Error> validate(const SimulationConfig& config) noexcept {
+    if (config.engine.expected_orders > kMaxCapacityHint) {
+        return Error{.code = ErrorCode::kInvalidConfig,
+                     .message = "expected_orders exceeds the maximum capacity hint (2^24)."};
+    }
+    if (config.engine.expected_events > kMaxCapacityHint) {
+        return Error{.code = ErrorCode::kInvalidConfig,
+                     .message = "expected_events exceeds the maximum capacity hint (2^24)."};
+    }
+    if (config.snapshot_interval_ticks < 0 ||
+        config.snapshot_interval_ticks > kMaxSnapshotIntervalTicks) {
+        return Error{.code = ErrorCode::kInvalidConfig,
+                     .message = "snapshot_interval_ticks must be between 0 and 1000000."};
+    }
+    return std::nullopt;
+}
 
 Simulation::Simulation(const SimulationConfig& config)
     : Simulation(config, MatchingEngine{config.engine}) {}
@@ -84,6 +102,16 @@ void Simulation::step_tick() {
             take_snapshot_if_due();
         }
     }
+}
+
+AdvanceResult Simulation::advance() {
+    const Tick before = m_engine.current_tick();
+    if (!step_event()) {
+        // No redo left and the engine is idle, so this only advances the tick.
+        step_tick();
+    }
+    return m_engine.current_tick() == before ? AdvanceResult::kStepped
+                                             : AdvanceResult::kTickAdvanced;
 }
 
 bool Simulation::step_back() {

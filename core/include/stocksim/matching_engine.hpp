@@ -20,6 +20,10 @@
 
 namespace stocksim {
 
+/// Upper bound on the events emitted by one `MatchingEngine::step_event()` (a match emits
+/// Match, Fill, Fill, PriceChange). Lets a producer reserve buffer space before stepping.
+inline constexpr std::size_t kMaxEventsPerStep = 4;
+
 struct EngineConfig {
     /// Capacity hints; the engine still grows beyond them.
     std::size_t expected_orders = 1024;

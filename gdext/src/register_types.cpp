@@ -1,5 +1,7 @@
 #include "register_types.hpp"
 
+#include "simulation_node.hpp"
+
 #include <gdextension_interface.h>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
@@ -10,7 +12,7 @@ void initialize_module(godot::ModuleInitializationLevel level) {
     if (level != godot::MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
-    // Simulation classes are registered here as TODO.md section 3 lands.
+    GDREGISTER_CLASS(Simulation);
 }
 
 void uninitialize_module(godot::ModuleInitializationLevel level) {

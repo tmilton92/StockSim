@@ -35,3 +35,19 @@ python tools/check_format.py [--fix] [--clang-format PATH]
 python tools/run_clang_tidy.py --build-dir build/debug [--clang-tidy PATH]
 python tools/godot_check.py --godot PATH_TO_GODOT
 ```
+
+`godot_check.py` imports the project, checks the extension loads, verifies the class reference
+XML is current, and runs the headless smoke test in `game/tests/smoke`.
+
+## Updating the class reference
+
+When bindings in `gdext/src` change, update the descriptions in
+`gdext/doc_classes/<Class>.docs.json`, then regenerate the XML from the built extension:
+
+```powershell
+& "<path>\Godot_v4.7.2-stable_win64_console.exe" --headless --path game --doctool "$env:TEMP\stocksim-doc" --gdextension-docs
+python tools/fill_class_docs.py "$env:TEMP\stocksim-doc\doc_classes\Simulation.xml" gdext/doc_classes/Simulation.docs.json gdext/doc_classes/Simulation.xml
+```
+
+`fill_class_docs.py` refuses to write the file if any method, signal or constant is
+undocumented, or if a description refers to something that no longer exists.

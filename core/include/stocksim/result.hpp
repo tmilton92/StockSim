@@ -15,6 +15,8 @@ enum class ErrorCode : std::uint8_t {
     kUnsupportedVersion,
     /// The data is truncated or contains values that cannot describe a valid state.
     kCorruptState,
+    /// A configuration value is out of its allowed range.
+    kInvalidConfig,
 };
 
 /// An error from a fallible core operation. The message is static text; no allocation.

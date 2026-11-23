@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Simulation" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Runs the stocksim market simulation and streams its events to scripts.
+	</brief_description>
+	<description>
+		Wraps the C++ simulation core: an order book with price-time priority, market/limit/stop/stop-limit orders, an event log, and time travel ([method step_back]). All market logic lives in the core; this node only translates.
+		Drive it manually with [method step_event] and [method step_tick], or continuously with [method run], which advances the simulation on a worker thread. Either way, read what happened by calling [method drain_events] every frame: each event is one row of [constant EVENT_STRIDE] integers in a [PackedInt64Array], indexed with the [code]EVENT_FIELD_*[/code] constants.
+		[codeblock]
+		var rows: PackedInt64Array = simulation.drain_events()
+		for base: int in range(0, rows.size(), Simulation.EVENT_STRIDE):
+			var reason: int = rows[base + Simulation.EVENT_FIELD_REASON]
+			print(Simulation.reason_text(reason))
+		[/codeblock]
+		Prices are integer ticks and quantities are integer lots; there is no floating point in market data. Events are never dropped: when the event buffer is full, the worker waits until it is drained, and manual stepping reports an error.
+		All methods must be called from the main thread. Queries return the state at the moment of the call; while running, that state may be ahead of the events drained so far.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="can_step_back" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if there is a step to undo with [method step_back].
+			</description>
+		</method>
+		<method name="cancel_order">
+			<return type="void" />
+			<param index="0" name="account" type="int" />
+			<param index="1" name="order_id" type="int" />
+			<description>
+				Queues a cancel of order [param order_id] on behalf of [param account]. The outcome arrives as an [constant EVENT_ORDER_CANCELLED] or [constant EVENT_COMMAND_REJECTED] event (for example [constant REASON_NOT_ORDER_OWNER]).
+			</description>
+		</method>
+		<method name="configure">
+			<return type="int" enum="Error" />
+			<param index="0" name="scenario" type="Dictionary" />
+			<description>
+				Replaces the simulation with a new one configured by [param scenario], a parsed scenario object (see [code]docs/scenario-format.md[/code]). Unknown keys, wrong types and out-of-range values are rejected. Stops any [method run] and discards undrained events. Returns [constant OK] or an error code, logging the reason.
+			</description>
+		</method>
+		<method name="drain_events">
+			<return type="PackedInt64Array" />
+			<param index="0" name="max_events" type="int" default="-1" />
+			<description>
+				Removes and returns up to [param max_events] of the oldest undelivered events (all of them if negative), as consecutive rows of [constant EVENT_STRIDE] integers. Call it every frame; draining also lets a paused worker continue.
+			</description>
+		</method>
+		<method name="event_type_name" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="type" type="int" />
+			<description>
+				Returns the name of an event type, such as [code]"Match"[/code] for [constant EVENT_MATCH].
+			</description>
+		</method>
+		<method name="get_best_ask" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the lowest resting sell price in ticks, or [code]0[/code] when there are no sell orders (check [method has_best_ask]).
+			</description>
+		</method>
+		<method name="get_best_bid" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the highest resting buy price in ticks, or [code]0[/code] when there are no buy orders (check [method has_best_bid]).
+			</description>
+		</method>
+		<method name="get_current_tick" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the current simulation tick.
+			</description>
+		</method>
+		<method name="get_depth" qualifiers="const">
+			<return type="PackedInt64Array" />
+			<param index="0" name="side" type="int" enum="Simulation.Side" />
+			<param index="1" name="max_levels" type="int" />
+			<description>
+				Returns up to [param max_levels] (at most 4096) price levels on [param side], best price first, as rows of [constant DEPTH_STRIDE] integers indexed with the [code]DEPTH_FIELD_*[/code] constants.
+			</description>
+		</method>
+		<method name="get_event_schema_version" qualifiers="static">
+			<return type="int" />
+			<description>
+				Returns the version of the event layout. It changes whenever event fields, types or reasons change meaning.
+			</description>
+		</method>
+		<method name="get_last_price" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the price of the most recent trade in ticks, or [code]0[/code] before the first trade (check [method has_last_price]). This is the market price: the last trade, not a measure of value.
+			</description>
+		</method>
+		<method name="get_last_sequence" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the sequence number of the most recent event in the current state ([code]0[/code] before any event). After [signal rewound], discard any held event with a larger sequence number.
+			</description>
+		</method>
+		<method name="get_order" qualifiers="const">
+			<return type="PackedInt64Array" />
+			<param index="0" name="order_id" type="int" />
+			<description>
+				Returns the live order [param order_id] as [constant ORDER_STRIDE] integers indexed with the [code]ORDER_FIELD_*[/code] constants, or an empty array if it is not live (filled, cancelled, rejected, or not yet processed).
+			</description>
+		</method>
+		<method name="get_pending_event_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of events waiting to be returned by [method drain_events].
+			</description>
+		</method>
+		<method name="get_scenario_name" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the [code]name[/code] of the loaded scenario, or [code]"Default"[/code].
+			</description>
+		</method>
+		<method name="get_steps_per_second" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the speed passed to the latest [method run] call ([code]0[/code] means unthrottled).
+			</description>
+		</method>
+		<method name="get_tick_volume" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the quantity traded so far in the current tick.
+			</description>
+		</method>
+		<method name="get_total_volume" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the total quantity traded since the simulation started.
+			</description>
+		</method>
+		<method name="get_trade_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of trades since the simulation started.
+			</description>
+		</method>
+		<method name="has_best_ask" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if any sell order is resting on the book.
+			</description>
+		</method>
+		<method name="has_best_bid" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if any buy order is resting on the book.
+			</description>
+		</method>
+		<method name="has_last_price" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] once at least one trade has happened.
+			</description>
+		</method>
+		<method name="has_redo" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] after [method step_back] while there is recorded future that [method step_event] and [method step_tick] will replay. Any new order, cancel or modify discards it.
+			</description>
+		</method>
+		<method name="is_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] while [method run] is advancing the simulation.
+			</description>
+		</method>
+		<method name="load_scenario">
+			<return type="int" enum="Error" />
+			<param index="0" name="path" type="String" />
+			<description>
+				Reads a scenario JSON file at [param path] and applies it with [method configure]. Returns [constant OK] or an error code, logging the reason (including the line of a JSON syntax error).
+			</description>
+		</method>
+		<method name="load_state">
+			<return type="int" enum="Error" />
+			<param index="0" name="data" type="PackedByteArray" />
+			<description>
+				Replaces the simulation with one restored from [param data], as produced by [method save_state]. History is not restored, so [method can_step_back] is [code]false[/code] afterwards. Returns [constant OK], or [constant ERR_FILE_UNRECOGNIZED] / [constant ERR_INVALID_DATA] for data from another version or corrupt data.
+			</description>
+		</method>
+		<method name="modify_order">
+			<return type="void" />
+			<param index="0" name="account" type="int" />
+			<param index="1" name="order_id" type="int" />
+			<param index="2" name="new_limit_price" type="int" />
+			<param index="3" name="new_qty" type="int" />
+			<description>
+				Queues a change of resting order [param order_id] to [param new_limit_price] and [param new_qty]. Reducing quantity at the same price keeps the order's place in the queue; any price change or quantity increase moves it to the back, and it may trade immediately.
+			</description>
+		</method>
+		<method name="pause">
+			<return type="void" />
+			<description>
+				Stops a [method run]. The simulation keeps its state and can be stepped manually or run again.
+			</description>
+		</method>
+		<method name="reason_text" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="reason" type="int" />
+			<description>
+				Returns the fixed English explanation of a [code]REASON_*[/code] code, for narration.
+			</description>
+		</method>
+		<method name="run">
+			<return type="void" />
+			<param index="0" name="steps_per_second" type="float" default="0.0" />
+			<description>
+				Starts advancing the simulation on a worker thread at [param steps_per_second] (a step is one event-producing step or one tick advance); [code]0[/code] runs as fast as possible. Calling it again changes the speed. Results do not depend on the speed or on timing: only on the inputs and their order.
+			</description>
+		</method>
+		<method name="save_state" qualifiers="const">
+			<return type="PackedByteArray" />
+			<description>
+				Returns the complete current market state as bytes, for [method load_state].
+			</description>
+		</method>
+		<method name="step_back">
+			<return type="bool" />
+			<description>
+				Undoes the most recent step (and any orders, cancels or modifies given after it), then emits [signal rewound]. Returns [code]false[/code] at the beginning. Undelivered events from the undone future are discarded.
+			</description>
+		</method>
+		<method name="step_event">
+			<return type="bool" />
+			<description>
+				Performs (or replays, after [method step_back]) one step, which emits at most four events. Returns [code]false[/code] if there was nothing to do. Fails with an error if the event buffer is full; call [method drain_events] first.
+			</description>
+		</method>
+		<method name="step_tick">
+			<return type="bool" />
+			<description>
+				Performs steps until the tick advances. Returns [code]true[/code] when the tick advanced, or [code]false[/code] if it stopped early because the event buffer filled up; drain and call again to continue.
+			</description>
+		</method>
+		<method name="submit_order">
+			<return type="int" />
+			<param index="0" name="account" type="int" />
+			<param index="1" name="side" type="int" enum="Simulation.Side" />
+			<param index="2" name="type" type="int" enum="Simulation.OrderType" />
+			<param index="3" name="qty" type="int" />
+			<param index="4" name="limit_price" type="int" default="0" />
+			<param index="5" name="stop_price" type="int" default="0" />
+			<description>
+				Queues a new order and returns its id. [param limit_price] is used by limit and stop-limit orders, [param stop_price] by stop and stop-limit orders; both are in ticks. The order is validated when processed: watch for [constant EVENT_ORDER_PLACED] or [constant EVENT_ORDER_REJECTED] with this id. Returns [code]0[/code] and logs an error if an argument is out of range.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="rewound">
+			<param index="0" name="last_sequence" type="int" />
+			<description>
+				Emitted by [method step_back]. Events with a sequence number greater than [param last_sequence] no longer happened; remove them from anything that displays them.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="SIDE_BUY" value="0" enum="Side">
+			A buy order (bid).
+		</constant>
+		<constant name="SIDE_SELL" value="1" enum="Side">
+			A sell order (ask).
+		</constant>
+		<constant name="ORDER_TYPE_MARKET" value="0" enum="OrderType">
+			Trades immediately against the book at the best available prices; any unfilled remainder is cancelled.
+		</constant>
+		<constant name="ORDER_TYPE_LIMIT" value="1" enum="OrderType">
+			Trades at the limit price or better; any unfilled remainder rests on the book.
+		</constant>
+		<constant name="ORDER_TYPE_STOP" value="2" enum="OrderType">
+			Waits until the last trade reaches the stop price, then becomes a market order.
+		</constant>
+		<constant name="ORDER_TYPE_STOP_LIMIT" value="3" enum="OrderType">
+			Waits until the last trade reaches the stop price, then becomes a limit order.
+		</constant>
+		<constant name="ORDER_STATUS_PENDING_STOP" value="0" enum="OrderStatus">
+			A stop order waiting for its stop price.
+		</constant>
+		<constant name="ORDER_STATUS_TRIGGERED" value="1" enum="OrderStatus">
+			A stop order whose stop price was reached, queued to become active.
+		</constant>
+		<constant name="ORDER_STATUS_MATCHING" value="2" enum="OrderStatus">
+			The order currently trading against the book.
+		</constant>
+		<constant name="ORDER_STATUS_RESTING" value="3" enum="OrderStatus">
+			An order resting on the book.
+		</constant>
+		<constant name="EVENT_ORDER_PLACED" value="0" enum="EventType">
+			An order passed validation and was accepted.
+		</constant>
+		<constant name="EVENT_ORDER_REJECTED" value="1" enum="EventType">
+			An order failed validation; it never existed on the book.
+		</constant>
+		<constant name="EVENT_ORDER_RESTED" value="2" enum="EventType">
+			An order's unfilled remainder joined the book.
+		</constant>
+		<constant name="EVENT_ORDER_CANCELLED" value="3" enum="EventType">
+			An order's remainder was removed, by its owner or for lack of liquidity.
+		</constant>
+		<constant name="EVENT_ORDER_MODIFIED" value="4" enum="EventType">
+			A resting order's price or quantity was changed by its owner.
+		</constant>
+		<constant name="EVENT_COMMAND_REJECTED" value="5" enum="EventType">
+			A cancel or modify could not be applied.
+		</constant>
+		<constant name="EVENT_STOP_TRIGGERED" value="6" enum="EventType">
+			A stop order's stop price was reached.
+		</constant>
+		<constant name="EVENT_MATCH" value="7" enum="EventType">
+			One trade between the incoming order (taker) and a resting order (maker). Always followed by two [constant EVENT_FILL] events, taker first.
+		</constant>
+		<constant name="EVENT_FILL" value="8" enum="EventType">
+			One side of a trade, from one order's point of view.
+		</constant>
+		<constant name="EVENT_PRICE_CHANGE" value="9" enum="EventType">
+			The last trade price changed. [constant EVENT_FIELD_AUX_PRICE] holds the previous price.
+		</constant>
+		<constant name="REASON_NONE" value="0" enum="Reason">
+			No reason given.
+		</constant>
+		<constant name="REASON_ORDER_ACCEPTED" value="1" enum="Reason">
+			The order was accepted.
+		</constant>
+		<constant name="REASON_INVALID_QUANTITY" value="2" enum="Reason">
+			Rejected: the quantity is not positive or is too large.
+		</constant>
+		<constant name="REASON_INVALID_LIMIT_PRICE" value="3" enum="Reason">
+			Rejected: the limit price is not positive or is too large.
+		</constant>
+		<constant name="REASON_INVALID_STOP_PRICE" value="4" enum="Reason">
+			Rejected: the stop price is not positive or is too large.
+		</constant>
+		<constant name="REASON_RESTING_ON_BOOK" value="5" enum="Reason">
+			The unfilled quantity waits on the book.
+		</constant>
+		<constant name="REASON_CANCELLED_BY_OWNER" value="6" enum="Reason">
+			Cancelled by the account that placed it.
+		</constant>
+		<constant name="REASON_NO_LIQUIDITY" value="7" enum="Reason">
+			Remainder cancelled: nothing left on the other side to trade with.
+		</constant>
+		<constant name="REASON_UNKNOWN_ORDER" value="8" enum="Reason">
+			No live order has this id.
+		</constant>
+		<constant name="REASON_NOT_ORDER_OWNER" value="9" enum="Reason">
+			Only the placing account may change or cancel an order.
+		</constant>
+		<constant name="REASON_NOT_MODIFIABLE" value="10" enum="Reason">
+			Only resting orders can be modified.
+		</constant>
+		<constant name="REASON_MODIFIED_KEPT_PRIORITY" value="11" enum="Reason">
+			Quantity reduced at the same price; queue position kept.
+		</constant>
+		<constant name="REASON_MODIFIED_LOST_PRIORITY" value="12" enum="Reason">
+			Price changed or quantity increased; moved to the back of the queue.
+		</constant>
+		<constant name="REASON_STOP_PRICE_REACHED" value="13" enum="Reason">
+			The last trade reached the stop price.
+		</constant>
+		<constant name="REASON_TRADE" value="14" enum="Reason">
+			Incoming order traded with a resting order at the resting order's price.
+		</constant>
+		<constant name="REASON_TAKER_FILL" value="15" enum="Reason">
+			Filled as the taker (took liquidity).
+		</constant>
+		<constant name="REASON_MAKER_FILL" value="16" enum="Reason">
+			Filled as the maker (provided liquidity).
+		</constant>
+		<constant name="REASON_LAST_TRADE_PRICE" value="17" enum="Reason">
+			The market price is the last trade price.
+		</constant>
+		<constant name="EVENT_FIELD_SEQ" value="0" enum="EventField">
+			Global sequence number; strictly increasing by one.
+		</constant>
+		<constant name="EVENT_FIELD_TICK" value="1" enum="EventField">
+			Tick in which the event happened.
+		</constant>
+		<constant name="EVENT_FIELD_TYPE" value="2" enum="EventField">
+			An [enum EventType] value.
+		</constant>
+		<constant name="EVENT_FIELD_REASON" value="3" enum="EventField">
+			A [enum Reason] value; see [method reason_text].
+		</constant>
+		<constant name="EVENT_FIELD_INTENT" value="4" enum="EventField">
+			Broker intent tag; [code]0[/code] (none) until the broker layer exists.
+		</constant>
+		<constant name="EVENT_FIELD_SIDE" value="5" enum="EventField">
+			A [enum Side] value for the primary order.
+		</constant>
+		<constant name="EVENT_FIELD_ORDER_TYPE" value="6" enum="EventField">
+			An [enum OrderType] value for the primary order.
+		</constant>
+		<constant name="EVENT_FIELD_ORDER_ID" value="7" enum="EventField">
+			The primary order (the taker, for matches).
+		</constant>
+		<constant name="EVENT_FIELD_COUNTER_ORDER_ID" value="8" enum="EventField">
+			The other order involved, if any (the maker, for matches).
+		</constant>
+		<constant name="EVENT_FIELD_ACCOUNT" value="9" enum="EventField">
+			Account of the primary order.
+		</constant>
+		<constant name="EVENT_FIELD_COUNTER_ACCOUNT" value="10" enum="EventField">
+			Account of the other order, if any.
+		</constant>
+		<constant name="EVENT_FIELD_PRICE" value="11" enum="EventField">
+			Price in ticks; meaning depends on the type (execution price, limit price, new last price).
+		</constant>
+		<constant name="EVENT_FIELD_AUX_PRICE" value="12" enum="EventField">
+			Secondary price in ticks: the stop price, the previous price after a modify, or the previous last price.
+		</constant>
+		<constant name="EVENT_FIELD_QTY" value="13" enum="EventField">
+			Quantity: executed, cancelled, rested or ordered, depending on the type.
+		</constant>
+		<constant name="EVENT_FIELD_REMAINING" value="14" enum="EventField">
+			The primary order's remaining quantity after the event.
+		</constant>
+		<constant name="EVENT_STRIDE" value="15" enum="EventField">
+			Number of integers per event row returned by [method drain_events].
+		</constant>
+		<constant name="ORDER_FIELD_ID" value="0" enum="OrderField">
+			Order id.
+		</constant>
+		<constant name="ORDER_FIELD_ACCOUNT" value="1" enum="OrderField">
+			Account that placed the order.
+		</constant>
+		<constant name="ORDER_FIELD_SIDE" value="2" enum="OrderField">
+			A [enum Side] value.
+		</constant>
+		<constant name="ORDER_FIELD_TYPE" value="3" enum="OrderField">
+			An [enum OrderType] value.
+		</constant>
+		<constant name="ORDER_FIELD_STATUS" value="4" enum="OrderField">
+			An [enum OrderStatus] value.
+		</constant>
+		<constant name="ORDER_FIELD_LIMIT_PRICE" value="5" enum="OrderField">
+			Limit price in ticks ([code]0[/code] if none).
+		</constant>
+		<constant name="ORDER_FIELD_STOP_PRICE" value="6" enum="OrderField">
+			Stop price in ticks ([code]0[/code] if none).
+		</constant>
+		<constant name="ORDER_FIELD_REMAINING" value="7" enum="OrderField">
+			Quantity still open.
+		</constant>
+		<constant name="ORDER_FIELD_FILLED" value="8" enum="OrderField">
+			Quantity filled so far.
+		</constant>
+		<constant name="ORDER_STRIDE" value="9" enum="OrderField">
+			Number of integers returned by [method get_order] for a live order.
+		</constant>
+		<constant name="DEPTH_FIELD_PRICE" value="0" enum="DepthField">
+			Price level in ticks.
+		</constant>
+		<constant name="DEPTH_FIELD_QTY" value="1" enum="DepthField">
+			Total quantity resting at this price.
+		</constant>
+		<constant name="DEPTH_FIELD_ORDER_COUNT" value="2" enum="DepthField">
+			Number of orders resting at this price.
+		</constant>
+		<constant name="DEPTH_STRIDE" value="3" enum="DepthField">
+			Number of integers per row returned by [method get_depth].
+		</constant>
+	</constants>
+</class>

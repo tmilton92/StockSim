@@ -51,7 +51,9 @@ std::vector<Event> run_session(std::uint64_t seed, int request_count) {
             engine.step_tick();
         } else {
             for (std::uint64_t steps = rng.uniform_below(4); steps > 0; --steps) {
+                const std::size_t before = engine.events().size();
                 engine.step_event();
+                REQUIRE(engine.events().size() - before <= kMaxEventsPerStep);
                 REQUIRE_FALSE(engine.book().is_crossed());
             }
         }

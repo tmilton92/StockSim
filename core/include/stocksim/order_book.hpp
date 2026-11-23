@@ -9,6 +9,7 @@
 #include <limits>
 #include <map>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -83,8 +84,8 @@ public:
         };
         const LevelMap& map = levels(side);
         if (side == Side::kBuy) {
-            for (auto it = map.rbegin(); it != map.rend(); ++it) {
-                visit_level(it->second);
+            for (const auto& entry : std::views::reverse(map)) {
+                visit_level(entry.second);
             }
         } else {
             for (const auto& entry : map) {

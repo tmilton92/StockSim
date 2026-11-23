@@ -46,6 +46,7 @@ bool MatchingEngine::step_event() {
         return false;
     }
     assert(m_events.size() > events_before && "every step must emit at least one event");
+    assert(m_events.size() - events_before <= kMaxEventsPerStep && "step emitted too many events");
     assert(!m_book.is_crossed() && "book must never be crossed between steps");
     return true;
 }

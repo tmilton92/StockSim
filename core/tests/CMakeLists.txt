@@ -5,6 +5,7 @@ target_sources(
         crt_report_mode.cpp
         determinism_test.cpp
         engine_state_test.cpp
+        event_ring_test.cpp
         matching_engine_test.cpp
         matching_property_test.cpp
         order_book_test.cpp

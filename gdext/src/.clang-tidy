@@ -1,0 +1,9 @@
+# GDExtension-specific adjustments on top of the repo-root config.
+# - Enum constants bound to Godot (BIND_ENUM_CONSTANT) are the script-facing API and must follow
+#   the GDScript style guide (CONSTANT_CASE), e.g. Simulation.SIDE_BUY.
+# - Godot virtuals and binding hooks are named by the engine (_bind_methods, _exit_tree).
+InheritParentConfig: true
+CheckOptions:
+  - { key: readability-identifier-naming.EnumConstantCase,   value: UPPER_CASE }
+  - { key: readability-identifier-naming.EnumConstantPrefix, value: '' }
+  - { key: readability-identifier-naming.MethodIgnoredRegexp, value: '^_[a-z_]+$' }

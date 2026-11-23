@@ -1,0 +1,14 @@
+{
+    "format": "stocksim-scenario",
+    "format_version": 1,
+    "name": "Sandbox",
+    "description": "An empty market with default settings, for free experimentation.",
+    "simulation": {
+        "snapshot_interval_ticks": 64,
+        "expected_orders": 1024,
+        "expected_events": 4096
+    },
+    "runtime": {
+        "event_buffer_capacity": 65536
+    }
+}
