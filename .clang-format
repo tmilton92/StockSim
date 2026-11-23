@@ -1,0 +1,31 @@
+# clang-format 19 (pinned; see docs/VERSIONS.md). Applies to /core and /gdext.
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++20
+IndentWidth: 4
+ColumnLimit: 100
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBraces: Attach
+DerivePointerAlignment: false
+PointerAlignment: Left
+FixNamespaceComments: true
+NamespaceIndentation: None
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Own headers first (quoted), then godot-cpp, then third-party, then the standard library.
+  - Regex: '^"'
+    Priority: 1
+  - Regex: '^<(godot_cpp|gdextension_interface)'
+    Priority: 2
+  - Regex: '^<catch2/'
+    Priority: 3
+  - Regex: '^<[a-z_]+>$'
+    Priority: 4
+  - Regex: '.*'
+    Priority: 3
+SortIncludes: CaseSensitive
+InsertNewlineAtEOF: true

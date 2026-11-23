@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.2-stable
+  GODOT_LINUX_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+  CLANG_FORMAT_VERSION: 19.1.5
+
+jobs:
+  format:
+    name: clang-format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install pinned clang-format
+        run: python3 -m pip install --user "clang-format==${CLANG_FORMAT_VERSION}"
+      - name: Check formatting
+        run: python3 tools/check_format.py
+
+  build-test:
+    name: Build + test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Configure, build, test (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cmake --preset debug
+          cmake --build --preset debug
+          ctest --preset debug
+      - name: Configure, build, test (Windows, MSVC)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./tools/build.ps1 -Preset debug
+
+      - name: Godot headless import + extension load (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          zip="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -sSfL -o "$RUNNER_TEMP/$zip" \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${zip}"
+          echo "${GODOT_LINUX_SHA512}  $RUNNER_TEMP/$zip" | sha512sum --check
+          unzip -q "$RUNNER_TEMP/$zip" -d "$RUNNER_TEMP/godot"
+          python3 tools/godot_check.py --godot "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}_linux.x86_64"
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang-19 clang-tidy-19
+      - name: Configure + build with clang (generates godot-cpp bindings)
+        env:
+          CC: clang-19
+          CXX: clang++-19
+        run: |
+          cmake --preset debug
+          cmake --build --preset debug
+      - name: Run clang-tidy
+        run: python3 tools/run_clang_tidy.py --build-dir build/debug --clang-tidy clang-tidy-19

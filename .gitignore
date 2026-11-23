@@ -1,0 +1,30 @@
+# Build output
+/build/
+/out/
+compile_commands.json
+
+# Godot editor cache and generated files
+.godot/
+/android/
+*.translation
+
+# Compiled GDExtension binaries (built by CMake into game/bin/)
+/game/bin/*.dll
+/game/bin/*.so
+/game/bin/*.dylib
+/game/bin/*.framework/
+/game/bin/*.pdb
+/game/bin/*.lib
+/game/bin/*.exp
+/game/bin/*.ilk
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+*.user
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings
+.claude/settings.local.json

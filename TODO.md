@@ -1,0 +1,143 @@
+# Market Manipulation Simulator — TODO
+
+Educational simulator showing how a brokerage that is also the market maker / manipulator
+can move prices (wash trading, stop/liquidation hunting, execution abuse) and extract
+capital from retail traders — including the player.
+
+**Stack:** Godot 4.7.2-stable (GDScript UI/visuals) + C++ GDExtension (simulation core)
+**Principles:**
+- `/core` has zero Godot dependency (headless tests, batch runs)
+- Deterministic: seeded RNG, fixed ticks → exact replays, step-back via snapshots
+- Every event carries a human-readable reason + optional "broker intent" tag
+- All brands/entities fictional; simulated money only
+
+---
+
+## 0. Project setup
+- [x] Repo layout: `/core`, `/gdext`, `/game`, `/scenarios`, `/docs` (+ `/third_party`, `/tools`)
+- [x] Pin godot-cpp to the 4.7 branch matching Godot 4.7.2-stable
+  (godot-cpp 10.0.0-stable built against `extension_api.json` dumped from 4.7.2; ADR 0003)
+- [x] Build system (SCons or CMake) for core lib + GDExtension (CMake + presets; ADR 0001)
+- [x] Unit test framework for core (Catch2 or GoogleTest) (Catch2 v3; ADR 0002)
+- [x] CI: build + run core tests headless (`.github/workflows/ci.yml`: Linux/Windows/macOS
+  build + tests, clang-format, clang-tidy, Godot headless import + extension load)
+- [ ] CI: confirm the workflow passes on GitHub after the first push (no remote configured yet)
+- [x] Code style / clang-format (+ clang-tidy naming rules; ADR 0004)
+- [x] project.godot: untyped_declaration, inferred_declaration, unsafe_* warnings set to Error
+- [ ] Choose GDScript test framework (gdUnit4 or GUT) and record an ADR
+- [ ] CI: add a benchmark job once core has a benchmarkable step loop (CLAUDE.md targets)
+
+## 1. Core: order book & matching (C++)
+- [ ] Types: Price (fixed-point ticks), Qty, AccountId, OwnerId, OrderId, Tick
+- [ ] Order types: market, limit, stop, stop-limit, cancel, modify
+- [ ] Limit order book with price-time priority
+- [ ] Matching engine producing fills
+- [ ] Last price, best bid/ask, depth snapshot, volume
+- [ ] Event stream: OrderPlaced, OrderCancelled, Match, Fill, PriceChange (with reason string)
+- [ ] Event-level stepping API: `step_event()`, `step_tick()`
+- [ ] Seeded RNG wrapper used everywhere
+- [ ] Tests: crossing, partial fills, priority, stops triggering
+
+## 2. Snapshots & replay
+- [ ] Full-state serialization of core
+- [ ] Snapshot every N ticks
+- [ ] `step_back()` = restore nearest snapshot + replay forward
+- [ ] Determinism test: same seed → identical event log hash
+
+## 3. GDExtension bridge
+- [ ] Expose `Simulation` node: init(config), step_event, step_tick, step_back, run(speed)
+- [ ] Ring buffer of events pulled by Godot each frame
+- [ ] Query API: book depth, account state, order lookup, ownership lookup
+- [ ] Config from scenario resource/JSON
+
+## 4. Godot: base visualization
+- [ ] Main layout: chart, order book ladder, trade tape, narration panel, controls
+- [ ] Controls: play/pause, step event, step tick, step back, speed slider
+- [ ] Order book ladder with animated depth bars + fill flashes
+- [ ] Price chart (candles + last-trade line)
+- [ ] Trade tape
+- [ ] Narration panel showing event reasons; highlight related order/account/price
+- [ ] Inspector panel: click any account or order
+
+## 5. Lesson system
+- [ ] Scenario format: initial state, enabled features, narration cues, pause points
+- [ ] Chapter loader + chapter select menu
+- [ ] Chapter 1: Market creation (empty book, issuer supply, market maker quotes, spread)
+- [ ] Chapter 2: The first trade (price = last trade, not value)
+- [ ] Chapter 3: Thin vs deep book (same order, different impact)
+
+## 6. Agents & cohorts
+- [ ] Fundamental value process (hidden true value)
+- [ ] Agent SoA storage in C++
+- [ ] Trader styles: momentum, mean-reversion, FOMO/herding, panic seller, leverage gambler, value, noise
+- [ ] Per-agent params: capital, leverage, risk tolerance, reaction delay, attention, stop habits, social sensitivity
+- [ ] Cohort agents (weighted representative agents) for 1M → billions
+- [ ] Market maker agent (two-sided quotes, inventory mgmt)
+- [ ] Arbitrageur agent (toggleable)
+- [ ] Threading for agent decision phase
+- [ ] Sanity checks: fat tails, volatility clustering
+- [ ] Godot: trader-count slider (1 → 10 → 1k → 1M → billions), sampled agent dots sized by weight
+- [ ] Chapter 4: Growing the crowd
+
+## 7. Futures layer
+- [ ] Contract spec: size, tick, expiry, settlement index
+- [ ] Initial/maintenance margin, mark-to-market each tick/day
+- [ ] Open interest tracking
+- [ ] Margin calls + liquidation engine (forced market orders)
+- [ ] Liquidation cascade detection/event tagging
+- [ ] Godot: liquidation markers on chart, cascade timeline
+- [ ] Chapter 5: Futures & leverage
+
+## 8. Manipulator accounts & wash trading
+- [ ] Owner entity controlling N accounts
+- [ ] Wash trade action (self-matching across own accounts)
+- [ ] Painting the tape (laddered prints)
+- [ ] Spoofing / layering (place + cancel)
+- [ ] Accumulate → pump → distribute playbook
+- [ ] Net-capital tracker per owner (shows wash loop ≈ 0 net minus fees)
+- [ ] Godot: ownership view toggle (color by true owner on tape/chart)
+- [ ] Godot: account graph (nodes = accounts, edges = trades, wash cycles glow)
+- [ ] Godot: capital flow particles between pools
+- [ ] Chapter 6: Wash trading — price moves, no capital changes hands
+
+## 9. Broker layer (broker = manipulator)
+- [ ] `Broker` sits between clients and book: routing (internalize/B-book vs pass-through)
+- [ ] Full visibility API: all client orders, stops, leverage, margin, liquidation prices
+- [ ] Front-running client orders
+- [ ] Targeted stop / liquidation hunting using exact positions
+- [ ] Execution abuse toggles: spread widening, asymmetric slippage, last-look rejects, ack delays
+- [ ] Broker price feed with controllable deviation from market
+- [ ] Mid-trade margin/leverage rule changes
+- [ ] Broker AI: score accounts by extractable value, pick targets
+- [ ] "Broker intent" tags on all broker events
+- [ ] Godot: broker console / x-ray overlay (heat map of stops + liquidation prices on price axis)
+- [ ] Godot: Sankey of capital flow retail → broker
+- [ ] Chapter 7: The x-ray view
+- [ ] Chapter 8: The house is the broker
+
+## 10. Player mode
+- [ ] Player as a normal agent driven by UI input (no special-casing in core)
+- [ ] Account opening flow: balance, leverage, account type; fictional-brand "aggressive marketing" screen
+- [ ] Trading UI: chart, order ticket, positions, P&L, margin meter
+- [ ] Locked broker view (unlocks on blow-up or sandbox toggle)
+- [ ] Post-mortem replay: player timeline side-by-side with broker console + intent narration
+- [ ] Loss attribution: spread, slippage, front-run, stop hunt, liquidation, fees → % to broker
+- [ ] Honest-broker counterfactual: replay player's exact orders through a regulated pass-through broker
+- [ ] Difficulty presets (broker aggression levels)
+- [ ] Chapter 9: Your account
+
+## 11. Safeguards & comparison
+- [ ] Self-trade prevention
+- [ ] Beneficial-ownership linking
+- [ ] Cancel-to-fill ratio alerts, volume vs OI anomalies, position limits
+- [ ] Segregated client funds, best-execution rule, no internalization mode
+- [ ] Side-by-side replay: same seed, safeguards off vs on
+- [ ] Chapter 10: Safeguards
+
+## 12. Polish & tooling
+- [ ] Scenario editor (or at least hot-reloadable JSON)
+- [ ] Headless batch runner + CSV export of metrics
+- [ ] Metrics dashboard: price vs value, real vs reported volume, wealth transfer, P&L by style
+- [ ] Performance profiling at 1M agents / billions via cohorts
+- [ ] Glossary / tooltips for terms
+- [ ] Docs: architecture, adding a trader style, adding a chapter

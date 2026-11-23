@@ -1,0 +1,12 @@
+# Normalize EOL for all files that Git considers text files.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Godot binary/imported assets
+*.png binary
+*.ttf binary
+*.otf binary
+*.wav binary
+*.ogg binary
