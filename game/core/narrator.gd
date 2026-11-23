@@ -6,9 +6,10 @@ extends RefCounted
 ## and inspect them. Every line ends with the core's fixed explanation of the event's reason.
 
 
-## BBCode line for [param event].
-static func describe(event: SimEvent, palette: NarrationPalette) -> String:
-	var body: String = _body(event, palette)
+## BBCode line for [param event]. Accounts are shown by name when [param names] has one.
+static func describe(event: SimEvent, palette: NarrationPalette,
+		names: AccountNames = null) -> String:
+	var body: String = _body(event, palette, names)
 	var reason: String = Simulation.reason_text(event.reason)
 	var line: String = "%s %s" % [_colored("t%d" % event.tick, palette.muted), body]
 	if not reason.is_empty():
@@ -20,17 +21,18 @@ static func order_link(id: int) -> String:
 	return _link(EntityRef.make(EntityRef.Kind.ORDER, id), "#%d" % id)
 
 
-static func account_link(id: int) -> String:
-	return _link(EntityRef.make(EntityRef.Kind.ACCOUNT, id), "acct %d" % id)
+static func account_link(id: int, names: AccountNames = null) -> String:
+	var text: String = names.label(id) if names != null else "acct %d" % id
+	return _link(EntityRef.make(EntityRef.Kind.ACCOUNT, id), text)
 
 
 static func price_link(ticks: int) -> String:
 	return _link(EntityRef.make(EntityRef.Kind.PRICE, ticks), PriceFormat.price(ticks))
 
 
-static func _body(event: SimEvent, palette: NarrationPalette) -> String:
+static func _body(event: SimEvent, palette: NarrationPalette, names: AccountNames) -> String:
 	var order: String = order_link(event.order_id)
-	var account: String = account_link(event.account)
+	var account: String = account_link(event.account, names)
 	var side: String = _colored(PriceFormat.side(event.side), palette.for_side(event.side))
 	match event.type:
 		Simulation.EVENT_ORDER_PLACED:
@@ -59,7 +61,7 @@ static func _body(event: SimEvent, palette: NarrationPalette) -> String:
 				_colored("Trade:", palette.emphasis), order, account,
 				_colored(verb, palette.for_side(event.side)), PriceFormat.qty(event.qty),
 				price_link(event.price), order_link(event.counter_order_id),
-				account_link(event.counter_account)]
+				account_link(event.counter_account, names)]
 		Simulation.EVENT_FILL:
 			return "%s filled %s @ %s, %s left." % [
 				order, PriceFormat.qty(event.qty), price_link(event.price),

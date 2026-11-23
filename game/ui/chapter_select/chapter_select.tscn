@@ -1,0 +1,70 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/chapter_select/chapter_select.gd" id="1_script"]
+
+[node name="ChapterSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(680, 0)
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Center/Column"]
+layout_mode = 2
+theme_type_variation = &"AppTitle"
+text = "Market Manipulation Simulator"
+
+[node name="Subtitle" type="Label" parent="Center/Column"]
+layout_mode = 2
+theme_type_variation = &"ChapterSummary"
+text = "How a broker that is also the market maker moves prices, step by step. All companies and money here are fictional."
+autowrap_mode = 3
+
+[node name="ChaptersTitle" type="Label" parent="Center/Column"]
+layout_mode = 2
+theme_type_variation = &"PanelTitle"
+text = "CHAPTERS"
+
+[node name="Chapters" type="VBoxContainer" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Separator" type="HSeparator" parent="Center/Column"]
+layout_mode = 2
+
+[node name="SandboxRow" type="HBoxContainer" parent="Center/Column"]
+layout_mode = 2
+
+[node name="SandboxButton" type="Button" parent="Center/Column/SandboxRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open sandbox"
+
+[node name="SandboxCaption" type="Label" parent="Center/Column/SandboxRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ChapterSummary"
+text = "Free play: place any order as any account and step the market yourself."
+autowrap_mode = 3

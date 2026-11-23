@@ -67,3 +67,9 @@ undocumented, or if a description refers to something that no longer exists.
 ```powershell
 & "<path>\Godot_v4.7.2-stable_win64_console.exe" --path game --resolution 1440x900 res://tests/visual/main_screen_capture.tscn -- "$env:TEMP\main_screen.png"
 ```
+
+- App and lesson screenshots (the menu, or a chapter played to a beat id):
+
+```powershell
+& "<path>\Godot_v4.7.2-stable_win64_console.exe" --path game --resolution 1440x900 res://tests/visual/app_capture.tscn -- "$env:TEMP\ch3.png" res://scenarios/chapters/03_thin_vs_deep.json compare
+```

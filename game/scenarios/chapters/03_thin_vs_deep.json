@@ -1,0 +1,97 @@
+{
+    "format": "stocksim-scenario",
+    "format_version": 2,
+    "name": "Chapter 3: Thin vs deep book",
+    "description": "The same market order against a thin book and a deep book.",
+    "lesson": {
+        "chapter": 3,
+        "title": "Thin vs deep book",
+        "summary": "Send the same order into a thin book and a deep book and compare what it costs and how far it moves the price. Depth, not value, decides price impact.",
+        "features": ["chart", "ladder", "tape", "narration", "inspector"],
+        "learner_account": 10,
+        "participants": [
+            {"account": 2, "name": "Ledger Lane Markets", "role": "Market maker"},
+            {"account": 4, "name": "Cornerstone Quotes", "role": "Small market maker"},
+            {"account": 5, "name": "Atlas Capital", "role": "Large buyer"}
+        ],
+        "setup": [
+            {"do": "submit", "account": 4, "side": "sell", "type": "limit", "qty": 10, "price": "100.10"},
+            {"do": "submit", "account": 4, "side": "sell", "type": "limit", "qty": 10, "price": "100.30"},
+            {"do": "submit", "account": 4, "side": "sell", "type": "limit", "qty": 10, "price": "100.60"},
+            {"do": "submit", "account": 4, "side": "sell", "type": "limit", "qty": 10, "price": "101.00"},
+            {"do": "submit", "account": 4, "side": "sell", "type": "limit", "qty": 100, "price": "102.00"},
+            {"do": "ladder", "account": 4, "side": "buy", "from": "99.90", "step": "0.20", "levels": 4, "qty": 10},
+            {"do": "tick"}
+        ],
+        "beats": [
+            {
+                "id": "thin_book",
+                "title": "A thin book",
+                "text": "This market is [b]thin[/b]: only 10 shares wait at each of the first few ask prices, and the next real size is far away at 102.00.",
+                "actions": [
+                    {"do": "highlight", "price": "100.10"}
+                ]
+            },
+            {
+                "id": "thin_order",
+                "title": "A large buyer arrives",
+                "text": "Atlas Capital sends a market order to [b]buy 60 shares[/b].",
+                "actions": [
+                    {"do": "submit", "account": 5, "side": "buy", "type": "market", "qty": 60, "tag": "thin_probe"}
+                ],
+                "wait": {
+                    "kind": "event",
+                    "event": "match",
+                    "tag": "thin_probe",
+                    "hint": "Press Step until it starts trading (or Tick to run it all)."
+                }
+            },
+            {
+                "id": "thin_result",
+                "title": "It climbs the book",
+                "text": "To find 60 shares the order had to climb through every ask level, paying more at each one. The last price jumped from 100.10 to [b]102.00[/b].",
+                "actions": [
+                    {"do": "tick"},
+                    {"do": "record", "tag": "thin_probe", "label": "Thin book"},
+                    {"do": "highlight", "tag": "thin_probe"}
+                ]
+            },
+            {
+                "id": "deep_book",
+                "title": "Same moment, deep book",
+                "text": "Now imagine the same company at the same moment, but a market maker keeps [b]500 shares at every price[/b]. This is a [b]deep[/b] book.",
+                "actions": [
+                    {"do": "reset"},
+                    {"do": "ladder", "account": 2, "side": "sell", "from": "100.10", "step": "0.10", "levels": 5, "qty": 500},
+                    {"do": "ladder", "account": 2, "side": "buy", "from": "99.90", "step": "0.10", "levels": 5, "qty": 500},
+                    {"do": "tick"},
+                    {"do": "highlight", "price": "100.10"}
+                ]
+            },
+            {
+                "id": "deep_order",
+                "title": "The identical order",
+                "text": "Atlas Capital sends the identical order: [b]buy 60 at market[/b].",
+                "actions": [
+                    {"do": "submit", "account": 5, "side": "buy", "type": "market", "qty": 60, "tag": "deep_probe"}
+                ],
+                "wait": {
+                    "kind": "event",
+                    "event": "match",
+                    "tag": "deep_probe",
+                    "hint": "Press Step until it trades (or Tick)."
+                }
+            },
+            {
+                "id": "compare",
+                "title": "Depth decides the impact",
+                "text": "In the deep book the whole order filled at the best price and the last price did not move. In the thin book the same order moved the price by almost [b]two full points[/b] and paid more for every share.\n\nPrice impact depends on depth, not on what the company is worth. A market with little real depth is easy to push around, which later chapters exploit.",
+                "actions": [
+                    {"do": "tick"},
+                    {"do": "record", "tag": "deep_probe", "label": "Deep book"},
+                    {"do": "show_comparison"}
+                ]
+            }
+        ]
+    }
+}

@@ -85,22 +85,24 @@ bool read_section(const Dictionary& root, const char* key, Dictionary& section, 
     return true;
 }
 
-godot::Error parse_header(const Dictionary& root, ScenarioSettings& out, String& message) {
+godot::Error parse_header(const Dictionary& root, ScenarioSettings& out, int64_t& version,
+                          String& message) {
     const Variant format = root.get("format", Variant());
     if (format.get_type() != Variant::STRING || String(format) != kScenarioFormat) {
         message = String("scenario.format must be \"") + kScenarioFormat + "\".";
         return godot::ERR_FILE_UNRECOGNIZED;
     }
-    int64_t version = -1;
+    version = -1;
     if (!root.has("format_version") ||
         !read_int(root, "format_version", 0, INT32_MAX, "scenario", version, message)) {
         message = "scenario.format_version is required and must be an integer.";
         return godot::ERR_INVALID_DATA;
     }
-    if (version != kScenarioFormatVersion) {
+    if (version < kMinScenarioFormatVersion || version > kMaxScenarioFormatVersion) {
         message = String("Unsupported scenario format_version ") + String::num_int64(version) +
-                  String(" (this build reads version ") +
-                  String::num_int64(kScenarioFormatVersion) + String(").");
+                  String(" (this build reads versions ") +
+                  String::num_int64(kMinScenarioFormatVersion) + String(" to ") +
+                  String::num_int64(kMaxScenarioFormatVersion) + String(").");
         return godot::ERR_FILE_UNRECOGNIZED;
     }
     for (const char* key : {"name", "description"}) {
@@ -119,13 +121,27 @@ godot::Error parse_header(const Dictionary& root, ScenarioSettings& out, String&
 
 godot::Error parse_scenario(const Dictionary& root, ScenarioSettings& out, String& message) {
     out = ScenarioSettings{};
-    if (!check_keys(root,
-                    {"format", "format_version", "name", "description", "simulation", "runtime"},
-                    "scenario", message)) {
+    int64_t version = 0;
+    if (const godot::Error header = parse_header(root, out, version, message);
+        header != godot::OK) {
+        return header;
+    }
+    const bool keys_ok = version >= kLessonScenarioFormatVersion
+                             ? check_keys(root,
+                                          {"format", "format_version", "name", "description",
+                                           "simulation", "runtime", "lesson"},
+                                          "scenario", message)
+                             : check_keys(root,
+                                          {"format", "format_version", "name", "description",
+                                           "simulation", "runtime"},
+                                          "scenario", message);
+    if (!keys_ok) {
         return godot::ERR_INVALID_DATA;
     }
-    if (const godot::Error header = parse_header(root, out, message); header != godot::OK) {
-        return header;
+    // The lesson itself is game-layer content (game/lessons); here it only has to be an object.
+    if (root.has("lesson") && Variant(root["lesson"]).get_type() != Variant::DICTIONARY) {
+        message = "scenario.lesson must be an object.";
+        return godot::ERR_INVALID_DATA;
     }
 
     Dictionary simulation;

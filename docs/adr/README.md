@@ -13,3 +13,4 @@ acceptance; supersede with a new ADR instead.
 | [0006](0006-snapshots-and-replay.md) | State serialization, snapshots, step-back and determinism checks | Accepted |
 | [0007](0007-gdextension-bridge.md) | GDExtension bridge, worker thread, and scenario JSON v1 | Accepted |
 | [0008](0008-gdscript-testing-gdunit4.md) | gdUnit4 for GDScript tests, vendored addon, strict script check | Accepted |
+| [0009](0009-lesson-system.md) | Lesson system, scenario format v2, and scenario location | Accepted |

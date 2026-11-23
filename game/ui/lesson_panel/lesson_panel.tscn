@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/lesson_panel/lesson_panel.gd" id="1_script"]
+
+[node name="LessonPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(360, 400)
+offset_right = 360.0
+offset_bottom = 720.0
+script = ExtResource("1_script")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="ChapterLabel" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PanelTitle"
+text = "CHAPTER"
+autowrap_mode = 3
+
+[node name="ProgressLabel" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PanelTitle"
+text = "Step 1 of 1"
+
+[node name="BeatTitle" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"LessonTitle"
+text = "Beat title"
+autowrap_mode = 3
+
+[node name="Text" type="RichTextLabel" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"LessonText"
+bbcode_enabled = true
+selection_enabled = true
+
+[node name="Comparison" type="Tree" parent="Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 230)
+layout_mode = 2
+select_mode = 1
+
+[node name="Hint" type="Label" parent="Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"HintText"
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="Column"]
+layout_mode = 2
+alignment = 2
+
+[node name="DoItButton" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Place the suggested order for you."
+text = "Do it for me"
+
+[node name="ChaptersButton" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Back to chapters"
+
+[node name="NextButton" type="Button" parent="Column/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+text = "Next"

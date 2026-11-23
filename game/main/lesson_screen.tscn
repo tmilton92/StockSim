@@ -1,0 +1,36 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://main/lesson_screen.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://ui/lesson_panel/lesson_panel.tscn" id="2_panel"]
+[ext_resource type="PackedScene" path="res://main/main_screen.tscn" id="3_main"]
+[ext_resource type="Script" path="res://lessons/lesson_runner.gd" id="4_runner"]
+
+[node name="LessonScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Split" type="HSplitContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LessonPanel" parent="Split" instance=ExtResource("2_panel")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="MainScreen" parent="Split" instance=ExtResource("3_main")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LessonRunner" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("4_runner")

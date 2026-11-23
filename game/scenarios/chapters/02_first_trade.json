@@ -1,0 +1,76 @@
+{
+    "format": "stocksim-scenario",
+    "format_version": 2,
+    "name": "Chapter 2: The first trade",
+    "description": "The learner makes the first trade and sees that the price is just the last trade.",
+    "lesson": {
+        "chapter": 2,
+        "title": "The first trade",
+        "summary": "Place the market's first order yourself and see where 'the price' comes from: it is simply the last trade, not a measure of what the company is worth.",
+        "features": ["chart", "ladder", "tape", "narration", "inspector", "ticket"],
+        "learner_account": 10,
+        "participants": [
+            {"account": 2, "name": "Ledger Lane Markets", "role": "Market maker"},
+            {"account": 3, "name": "Harbor Pension Fund", "role": "Seller"}
+        ],
+        "setup": [
+            {"do": "submit", "account": 2, "side": "buy", "type": "limit", "qty": 100, "price": "99.90"},
+            {"do": "submit", "account": 2, "side": "sell", "type": "limit", "qty": 100, "price": "100.10"},
+            {"do": "submit", "account": 2, "side": "buy", "type": "limit", "qty": 200, "price": "99.80"},
+            {"do": "submit", "account": 2, "side": "sell", "type": "limit", "qty": 200, "price": "100.20"},
+            {"do": "tick"}
+        ],
+        "beats": [
+            {
+                "id": "recap",
+                "title": "A market with no price",
+                "text": "The market maker is quoting 99.90 bid and 100.10 ask, with more behind each.\n\nThe chart is still empty: there is no price until someone actually trades."
+            },
+            {
+                "id": "learner_buys",
+                "title": "Your first order",
+                "text": "Place the market's first order yourself: [b]buy 10 shares at market[/b]. A market order takes the best price available right now, whatever it is.",
+                "wait": {
+                    "kind": "learner_order",
+                    "hint": "In the order ticket choose Buy, Market, quantity 10, then Submit order. Or press Do it for me.",
+                    "suggested": {"side": "buy", "type": "market", "qty": 10, "tag": "first"}
+                }
+            },
+            {
+                "id": "process",
+                "title": "Let it trade",
+                "text": "Your order is queued at the exchange. Nothing happens until the simulation moves forward.",
+                "wait": {
+                    "kind": "event",
+                    "event": "match",
+                    "tag": "first",
+                    "hint": "Press Step until your order trades (or Tick to do it all at once)."
+                }
+            },
+            {
+                "id": "price_is_last_trade",
+                "title": "That trade is now the price",
+                "text": "You bought at [b]100.10[/b], the market maker's ask. That single trade is now 'the price': the chart shows it and the last price reads 100.10.\n\nNothing about the company changed. One trade simply happened at that number.",
+                "actions": [
+                    {"do": "tick"},
+                    {"do": "highlight", "tag": "first"}
+                ]
+            },
+            {
+                "id": "seller_arrives",
+                "title": "The price drops, with no news",
+                "text": "Harbor Pension Fund sells 5 shares at market. They trade at the best bid, [b]99.90[/b], and the price 'falls' by 0.20.\n\nThe company is exactly the same as a moment ago. The last price moved only because the last trade happened on the other side of the spread.",
+                "actions": [
+                    {"do": "submit", "account": 3, "side": "sell", "type": "market", "qty": 5, "tag": "seller"},
+                    {"do": "tick"},
+                    {"do": "highlight", "price": "99.90"}
+                ]
+            },
+            {
+                "id": "summary",
+                "title": "What 'the price' means",
+                "text": "The quoted price is just the last trade. With a wide spread it bounces between bid and ask without any news at all.\n\nRemember this for later chapters: whoever controls [i]where[/i] trades happen controls 'the price'."
+            }
+        ]
+    }
+}

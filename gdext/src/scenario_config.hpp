@@ -13,8 +13,12 @@ namespace stocksim::gdext {
 
 /// Value of the required top-level "format" key in scenario JSON.
 inline constexpr const char* kScenarioFormat = "stocksim-scenario";
-/// Scenario format version understood by this build (docs/scenario-format.md).
-inline constexpr std::int64_t kScenarioFormatVersion = 1;
+/// Scenario format versions understood by this build (docs/scenario-format.md). Version 2 adds
+/// the "lesson" object, which the game layer parses; this parser only checks it is an object.
+inline constexpr std::int64_t kMinScenarioFormatVersion = 1;
+inline constexpr std::int64_t kMaxScenarioFormatVersion = 2;
+/// First version that may contain "lesson".
+inline constexpr std::int64_t kLessonScenarioFormatVersion = 2;
 
 /// Event buffer (ring) capacity bounds; the default holds a few seconds of busy output.
 inline constexpr std::int64_t kMinEventBufferCapacity = 64;

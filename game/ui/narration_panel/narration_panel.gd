@@ -13,6 +13,7 @@ const MAX_LINES: int = 400
 
 @onready var _text: RichTextLabel = %Text
 var _palette: NarrationPalette = NarrationPalette.new()
+var _names: AccountNames = null
 var _lines: int = 0
 
 
@@ -28,7 +29,7 @@ func add_events(events: Array[SimEvent]) -> void:
 	for event: SimEvent in events:
 		if _lines > 0:
 			_text.newline()
-		_text.append_text(Narrator.describe(event, _palette))
+		_text.append_text(Narrator.describe(event, _palette, _names))
 		_lines += 1
 	while _lines > MAX_LINES:
 		_text.remove_paragraph(0)
@@ -44,6 +45,12 @@ func rebuild(events: Array[SimEvent]) -> void:
 func clear() -> void:
 	_text.clear()
 	_lines = 0
+
+
+## Shows accounts by these names (lesson participants); null shows "acct N". Applies to lines
+## added afterwards; call [method rebuild] to rename existing ones.
+func set_account_names(names: AccountNames) -> void:
+	_names = names
 
 
 func line_count() -> int:

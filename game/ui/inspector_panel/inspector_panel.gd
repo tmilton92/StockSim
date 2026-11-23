@@ -14,6 +14,7 @@ const HISTORY_LINES: int = 12
 @onready var _title: Label = %Title
 @onready var _details: RichTextLabel = %Details
 var _palette: NarrationPalette = NarrationPalette.new()
+var _names: AccountNames = null
 
 
 func _ready() -> void:
@@ -38,7 +39,7 @@ func show_order(order_id: int, live: PackedInt64Array, history: Array[SimEvent])
 		var status: Simulation.OrderStatus = \
 				live[Simulation.ORDER_FIELD_STATUS] as Simulation.OrderStatus
 		lines.append("%s %s by %s" % [PriceFormat.order_type(type), PriceFormat.side(side),
-				Narrator.account_link(live[Simulation.ORDER_FIELD_ACCOUNT])])
+				Narrator.account_link(live[Simulation.ORDER_FIELD_ACCOUNT], _names)])
 		lines.append("Status: %s" % PriceFormat.order_status(status))
 		if live[Simulation.ORDER_FIELD_LIMIT_PRICE] != 0:
 			lines.append("Limit: %s"
@@ -56,6 +57,8 @@ func show_order(order_id: int, live: PackedInt64Array, history: Array[SimEvent])
 func show_account(account_id: int, live_orders: Array[PackedInt64Array],
 		history: Array[SimEvent]) -> void:
 	_title.text = "ACCOUNT %d" % account_id
+	if _names != null and _names.has_name(account_id):
+		_title.text = "%s (ACCOUNT %d)" % [_names.label(account_id).to_upper(), account_id]
 	var lines: PackedStringArray = []
 	lines.append("Live orders: %d" % live_orders.size())
 	for order: PackedInt64Array in live_orders:
@@ -79,6 +82,11 @@ func show_price(price: int, bid_qty: int, bid_orders: int, ask_qty: int, ask_ord
 	_show(lines, trades)
 
 
+## Shows accounts by these names (lesson participants); null shows "acct N".
+func set_account_names(names: AccountNames) -> void:
+	_names = names
+
+
 func clear() -> void:
 	_title.text = "INSPECTOR"
 	_details.clear()
@@ -95,7 +103,7 @@ func _show(lines: PackedStringArray, history: Array[SimEvent]) -> void:
 	var recent: Array[SimEvent] = history.slice(maxi(0, history.size() - HISTORY_LINES))
 	var described: PackedStringArray = []
 	for event: SimEvent in recent:
-		described.append(Narrator.describe(event, _palette))
+		described.append(Narrator.describe(event, _palette, _names))
 	_details.append_text("\n".join(described))
 
 

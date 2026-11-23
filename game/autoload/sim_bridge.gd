@@ -40,6 +40,14 @@ func poll() -> void:
 	events_received.emit(events)
 
 
+## The best price an order on [param side] would trade against now: the best ask for a buy,
+## the best bid for a sell; 0 if that side of the book is empty.
+func best_opposite_quote(side: Simulation.Side) -> int:
+	if side == Simulation.SIDE_BUY:
+		return simulation.get_best_ask() if simulation.has_best_ask() else 0
+	return simulation.get_best_bid() if simulation.has_best_bid() else 0
+
+
 ## Loads a scenario JSON file into a fresh simulation.
 func load_scenario(path: String) -> Error:
 	var error: Error = simulation.load_scenario(path)

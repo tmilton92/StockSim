@@ -65,7 +65,8 @@ capital from retail traders — including the player.
 - [ ] Query API: account state (cash, position, margin) once accounts exist in core (§7/§10)
 - [ ] Query API: ownership lookup once owners exist in core (§8)
 - [x] Config from scenario JSON (format v1: `docs/scenario-format.md`, `/scenarios`)
-- [ ] Decide how `/scenarios` files are packaged into exported builds (res:// access) (§5)
+- [x] Decide how scenario files are packaged into exported builds: they live in
+  `game/scenarios` (`res://scenarios`) (§5, ADR 0009)
 - [x] Typed GDScript wrapper for event rows in the game layer (§4: `SimEvent`)
 
 ## 4. Godot: base visualization
@@ -85,11 +86,16 @@ capital from retail traders — including the player.
 - [ ] Narration: filter (e.g. hide fill lines) and group events of one step
 
 ## 5. Lesson system
-- [ ] Scenario format: initial state, enabled features, narration cues, pause points
-- [ ] Chapter loader + chapter select menu
-- [ ] Chapter 1: Market creation (empty book, issuer supply, market maker quotes, spread)
-- [ ] Chapter 2: The first trade (price = last trade, not value)
-- [ ] Chapter 3: Thin vs deep book (same order, different impact)
+- [x] Scenario format: initial state, enabled features, narration cues, pause points
+  (scenario format v2 `lesson` object; `docs/scenario-format.md`, ADR 0009)
+- [x] Chapter loader + chapter select menu (`ChapterLoader`, `ChapterSelect`, `App` shell)
+- [x] Chapter 1: Market creation (empty book, issuer supply, market maker quotes, spread)
+- [x] Chapter 2: The first trade (price = last trade, not value)
+- [x] Chapter 3: Thin vs deep book (same order, different impact)
+- [x] Headless smoke test: every chapter plays to completion and its teaching points hold
+- [ ] Export preset that includes `res://scenarios/**/*.json` (verify on first export)
+- [ ] Lesson progress persistence (completed chapters) in user://
+- [ ] Narration cues tied to specific events within a beat (beyond beat text)
 
 ## 6. Agents & cohorts
 - [ ] Fundamental value process (hidden true value)

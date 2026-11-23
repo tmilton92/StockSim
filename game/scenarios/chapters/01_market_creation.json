@@ -1,0 +1,61 @@
+{
+    "format": "stocksim-scenario",
+    "format_version": 2,
+    "name": "Chapter 1: Market creation",
+    "description": "An empty order book fills with issuer supply and market maker quotes.",
+    "lesson": {
+        "chapter": 1,
+        "title": "Market creation",
+        "summary": "Watch a market appear from nothing: an empty book, a company selling new shares, and a market maker quoting both sides. Learn what bids, asks and the spread are.",
+        "features": ["chart", "ladder", "narration", "inspector"],
+        "learner_account": 10,
+        "participants": [
+            {"account": 1, "name": "Northwind Robotics", "role": "Issuer"},
+            {"account": 2, "name": "Ledger Lane Markets", "role": "Market maker"}
+        ],
+        "beats": [
+            {
+                "id": "empty_book",
+                "title": "An empty market",
+                "text": "Every market starts empty. The [b]order book[/b] on the right lists every order waiting to trade: buyers ([b]bids[/b]) below the line, sellers ([b]asks[/b]) above it.\n\nRight now it is empty, and the chart has nothing to draw. There is no price yet, because nothing has traded."
+            },
+            {
+                "id": "issuer_supply",
+                "title": "The issuer offers shares",
+                "text": "Northwind Robotics, the company itself, offers 1,000 new shares at [b]101.00[/b]. That is issuer supply: a sell order resting on the book, waiting for a buyer.\n\nNobody has bought anything, so there is still no price.",
+                "actions": [
+                    {"do": "submit", "account": 1, "side": "sell", "type": "limit", "qty": 1000, "price": "101.00", "tag": "supply"},
+                    {"do": "tick"},
+                    {"do": "highlight", "price": "101.00"}
+                ]
+            },
+            {
+                "id": "market_maker_quotes",
+                "title": "A market maker quotes both sides",
+                "text": "Ledger Lane Markets, a [b]market maker[/b], quotes both sides at once: it will buy 200 shares at 99.50 and sell 200 at 100.50.\n\nThe gap between the best bid and the best ask is the [b]spread[/b], 1.00 here. Anyone who wants to trade right now has to cross it.",
+                "actions": [
+                    {"do": "submit", "account": 2, "side": "buy", "type": "limit", "qty": 200, "price": "99.50"},
+                    {"do": "submit", "account": 2, "side": "sell", "type": "limit", "qty": 200, "price": "100.50"},
+                    {"do": "tick"},
+                    {"do": "highlight", "account": 2}
+                ]
+            },
+            {
+                "id": "tighter_spread",
+                "title": "Competition tightens the spread",
+                "text": "Competing for business, the market maker adds tighter quotes: 99.90 bid, 100.10 ask. The spread shrinks to [b]0.20[/b].\n\nA tight spread is cheap for traders. A wide one is a hidden cost: you buy high and sell low by up to the whole spread.",
+                "actions": [
+                    {"do": "submit", "account": 2, "side": "buy", "type": "limit", "qty": 100, "price": "99.90"},
+                    {"do": "submit", "account": 2, "side": "sell", "type": "limit", "qty": 100, "price": "100.10"},
+                    {"do": "tick"},
+                    {"do": "highlight", "price": "100.10"}
+                ]
+            },
+            {
+                "id": "explore",
+                "title": "Look around",
+                "text": "Click any price in the book, or any order, account or price in the narration, to inspect it.\n\nThe market maker earns the spread when both its bid and its ask get hit. That is how it is paid for quoting, and later chapters show what happens when the same firm also runs your brokerage.\n\nThere is still no price: nobody has traded. That happens next."
+            }
+        ]
+    }
+}

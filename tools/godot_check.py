@@ -31,7 +31,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GAME_DIR = REPO_ROOT / "game"
 DOC_DIR = REPO_ROOT / "gdext" / "doc_classes"
-SANDBOX_SCENARIO = REPO_ROOT / "scenarios" / "sandbox.json"
+SANDBOX_SCENARIO = "res://scenarios/sandbox.json"
 SMOKE_SCRIPT = "res://tests/smoke/simulation_smoke.gd"
 EXTENSION = "res://bin/stocksim.gdextension"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -224,7 +224,7 @@ def check_class_docs(binary: str) -> None:
 
 
 def check_smoke_test(binary: str) -> None:
-    run = godot(binary, ["--script", SMOKE_SCRIPT, "--", str(SANDBOX_SCENARIO)])
+    run = godot(binary, ["--script", SMOKE_SCRIPT, "--", SANDBOX_SCENARIO])
     expected = [m.group(1) for m in re.finditer(r"^EXPECT_ERROR: (.*)$", run.output, re.M)]
     unmatched_errors: list[str] = []
     for block in error_blocks(run.output):

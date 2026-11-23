@@ -33,6 +33,16 @@ func _ready() -> void:
 	_error_label.text = ""
 
 
+## Sets the account orders are placed as (the learner's account in lessons).
+func set_account(account: int) -> void:
+	_account_spin.value = account
+
+
+## Shows or hides the "Seed book" button (hidden in lessons).
+func set_seed_visible(seed_visible: bool) -> void:
+	_seed_button.visible = seed_visible
+
+
 ## Builds the request from the form, or returns null and shows why it is invalid.
 func build_request() -> OrderRequest:
 	var request: OrderRequest = OrderRequest.new()

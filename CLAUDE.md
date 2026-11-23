@@ -22,7 +22,7 @@ matching TODO.md entry, no skipped tests, no silenced warnings.
 /core/tests  Unit + determinism tests for core
 /gdext       GDExtension bindings: thin wrappers translating core <-> Godot types
 /game        Godot project (project.godot lives here)
-/scenarios   Lesson/chapter definitions (JSON or .tres)
+/game/scenarios  Scenario and chapter definitions (JSON), exported with the game (ADR 0009)
 /docs        Architecture notes, ADRs, how-to guides
 /tools       Batch runner, scripts, CI helpers
 /third_party Pinned git submodules (godot-cpp, Catch2); never edited locally

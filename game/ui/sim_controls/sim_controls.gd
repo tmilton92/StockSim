@@ -14,6 +14,8 @@ signal step_tick_pressed
 signal step_back_pressed
 ## The speed slider moved. 0 means as fast as possible.
 signal speed_changed(steps_per_second: float)
+## The Chapters (menu) button was pressed.
+signal menu_pressed
 
 @onready var _run_button: Button = %RunButton
 @onready var _step_event_button: Button = %StepEventButton
@@ -22,6 +24,9 @@ signal speed_changed(steps_per_second: float)
 @onready var _speed_slider: HSlider = %SpeedSlider
 @onready var _speed_label: Label = %SpeedLabel
 @onready var _status_label: Label = %StatusLabel
+@onready var _menu_button: Button = %MenuButton
+@onready var _speed_widgets: Array[Control] = [%SeparatorSpeed as Control,
+		%SpeedCaption as Control, _speed_slider as Control, _speed_label as Control]
 
 
 func _ready() -> void:
@@ -30,6 +35,7 @@ func _ready() -> void:
 	_step_tick_button.pressed.connect(step_tick_pressed.emit)
 	_step_back_button.pressed.connect(step_back_pressed.emit)
 	_speed_slider.value_changed.connect(_on_speed_slider_changed)
+	_menu_button.pressed.connect(menu_pressed.emit)
 	_update_speed_label()
 	if SceneUtil.is_standalone(self):
 		set_status(42, 318, false, true)
@@ -50,6 +56,13 @@ func set_status(tick: int, last_sequence: int, running: bool, can_step_back: boo
 	_step_tick_button.disabled = running
 	_step_back_button.disabled = running or not can_step_back
 	_status_label.text = "tick %d   event #%d" % [tick, last_sequence]
+
+
+## Shows or hides continuous running (Run and the speed slider). Stepping stays available.
+func set_run_available(available: bool) -> void:
+	_run_button.visible = available
+	for widget: Control in _speed_widgets:
+		widget.visible = available
 
 
 func _on_run_toggled(running: bool) -> void:

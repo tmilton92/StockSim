@@ -50,6 +50,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="ChartPanel" type="PanelContainer" parent="Margin/Layout/Body/Left"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 size_flags_stretch_ratio = 1.4
@@ -59,6 +60,7 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="Feeds" type="HSplitContainer" parent="Margin/Layout/Body/Left"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -76,6 +78,7 @@ custom_minimum_size = Vector2(340, 0)
 layout_mode = 2
 
 [node name="BookPanel" type="PanelContainer" parent="Margin/Layout/Body/Right"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 

@@ -16,7 +16,7 @@ var _rewound_to: int = -1
 func _initialize() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.size() != 1:
-		print("FAIL: expected one argument: the path of scenarios/sandbox.json")
+		print("FAIL: expected one argument: the sandbox scenario path")
 		quit(1)
 		return
 	_test_defaults()
@@ -64,9 +64,24 @@ func _test_scenarios(sandbox_path: String) -> void:
 	_check(sim.configure(unknown_key) == ERR_INVALID_DATA, "unknown key rejected")
 
 	var future: Dictionary = valid.duplicate(true)
-	future["format_version"] = 2
-	_expect_error("Unsupported scenario format_version 2")
+	future["format_version"] = 3
+	_expect_error("Unsupported scenario format_version 3")
 	_check(sim.configure(future) == ERR_FILE_UNRECOGNIZED, "future format rejected")
+
+	var lesson_v2: Dictionary = valid.duplicate(true)
+	lesson_v2["format_version"] = 2
+	lesson_v2["lesson"] = {"title": "parsed by the game layer, not the extension"}
+	_check(sim.configure(lesson_v2) == OK, "version 2 accepts a lesson object")
+
+	var lesson_v1: Dictionary = lesson_v2.duplicate(true)
+	lesson_v1["format_version"] = 1
+	_expect_error("unknown key \"lesson\"")
+	_check(sim.configure(lesson_v1) == ERR_INVALID_DATA, "version 1 has no lesson")
+
+	var lesson_not_object: Dictionary = lesson_v2.duplicate(true)
+	lesson_not_object["lesson"] = "chapter one"
+	_expect_error("scenario.lesson must be an object")
+	_check(sim.configure(lesson_not_object) == ERR_INVALID_DATA, "lesson must be an object")
 
 	var fractional: Dictionary = valid.duplicate(true)
 	fractional["simulation"] = {"snapshot_interval_ticks": 2.5}

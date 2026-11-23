@@ -6,6 +6,13 @@ extends Control
 ## Calls down into the panels and listens to their signals. Holds no market state of its own:
 ## the order book and orders come from core queries, history from [member SimBridge.event_log].
 
+## The learner placed an order with the order ticket. [param reference_price] is the best
+## opposite quote at that moment (0 if none).
+signal learner_order_submitted(order_id: int, side: Simulation.Side, qty: int,
+		reference_price: int)
+## The Chapters button was pressed.
+signal menu_requested
+
 ## Price levels requested per side for the ladder.
 const DEPTH_LEVELS: int = 40
 
@@ -19,6 +26,9 @@ const DEPTH_LEVELS: int = 40
 @onready var _narration: NarrationPanel = %NarrationPanel
 @onready var _inspector: InspectorPanel = %InspectorPanel
 @onready var _ticket: OrderTicket = %OrderTicket
+@onready var _chart_panel: Control = %ChartPanel
+@onready var _feeds: Control = %Feeds
+@onready var _book_panel: Control = %BookPanel
 
 var _selection: EntityRef = null
 
@@ -29,6 +39,7 @@ func _ready() -> void:
 	_controls.step_tick_pressed.connect(_on_step_tick_pressed)
 	_controls.step_back_pressed.connect(_on_step_back_pressed)
 	_controls.speed_changed.connect(_on_speed_changed)
+	_controls.menu_pressed.connect(menu_requested.emit)
 	_ticket.order_submitted.connect(_on_order_submitted)
 	_ticket.seed_requested.connect(_on_seed_requested)
 	_ladder.price_selected.connect(_on_price_selected)
@@ -45,6 +56,34 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	# Only while running: the tick advances even when no events arrive.
 	_update_status()
+
+
+## Shows only the panels in [param features] (see [constant ChapterDef.FEATURES]); an empty
+## list shows everything (the sandbox).
+func apply_features(features: PackedStringArray) -> void:
+	var all: bool = features.is_empty()
+	_chart_panel.visible = all or features.has("chart")
+	_book_panel.visible = all or features.has("ladder")
+	_tape.visible = all or features.has("tape")
+	_narration.visible = all or features.has("narration")
+	_feeds.visible = _tape.visible or _narration.visible
+	_inspector.visible = all or features.has("inspector")
+	_ticket.visible = all or features.has("ticket")
+	_ticket.set_seed_visible(all or features.has("seed"))
+	_controls.set_run_available(all or features.has("run"))
+
+
+## Shows accounts by participant names (null: "acct N") and redraws the narration.
+func set_account_names(names: AccountNames) -> void:
+	_narration.set_account_names(names)
+	_inspector.set_account_names(names)
+	_narration.rebuild(SimBridge.event_log.all())
+	_refresh_selection()
+
+
+## The account the order ticket places orders as.
+func set_learner_account(account: int) -> void:
+	_ticket.set_account(account)
 
 
 ## Selects an order, account or price: highlights it and shows it in the inspector.
@@ -181,8 +220,11 @@ func _on_step_back_pressed() -> void:
 
 
 func _on_order_submitted(request: OrderRequest) -> void:
-	SimBridge.simulation.submit_order(request.account, request.side, request.type, request.qty,
-			request.limit_price, request.stop_price)
+	var reference: int = SimBridge.best_opposite_quote(request.side)
+	var order_id: int = SimBridge.simulation.submit_order(request.account, request.side,
+			request.type, request.qty, request.limit_price, request.stop_price)
+	if order_id != 0:
+		learner_order_submitted.emit(order_id, request.side, request.qty, reference)
 
 
 func _on_seed_requested() -> void:
