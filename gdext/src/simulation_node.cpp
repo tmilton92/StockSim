@@ -20,6 +20,7 @@
 #include <godot_cpp/variant/variant.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -83,7 +84,11 @@ static_assert(Simulation::REASON_TRADE == static_cast<int>(Reason::kTrade));
 static_assert(Simulation::REASON_TAKER_FILL == static_cast<int>(Reason::kTakerFill));
 static_assert(Simulation::REASON_MAKER_FILL == static_cast<int>(Reason::kMakerFill));
 static_assert(Simulation::REASON_LAST_TRADE_PRICE == static_cast<int>(Reason::kLastTradePrice));
-static_assert(kEventSchemaVersion == 1, "update the EVENT_* / REASON_* mirrors and docs");
+static_assert(Simulation::REASON_INSUFFICIENT_FUNDS ==
+              static_cast<int>(Reason::kInsufficientFunds));
+static_assert(Simulation::REASON_INSUFFICIENT_SHARES ==
+              static_cast<int>(Reason::kInsufficientShares));
+static_assert(kEventSchemaVersion == 2, "update the EVENT_* / REASON_* mirrors and docs");
 
 constexpr int64_t kMaxDepthLevels = 4096;
 /// Steps taken per lock hold when running unthrottled, so the main thread is never starved.
@@ -163,7 +168,7 @@ String Simulation::get_scenario_name() const {
 
 void Simulation::replace(const ScenarioSettings& settings, stocksim::Simulation simulation) {
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         m_running = false;
         m_simulation = std::make_unique<stocksim::Simulation>(std::move(simulation));
         // Safe without draining: this is the consumer thread and the producer needs the lock.
@@ -188,14 +193,14 @@ int64_t Simulation::submit_order(int64_t account, Side side, OrderType type, int
                          .qty = Qty{qty},
                          .limit_price = PriceTicks{limit_price},
                          .stop_price = PriceTicks{stop_price}};
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return static_cast<int64_t>(m_simulation->submit(order).value());
 }
 
 void Simulation::cancel_order(int64_t account, int64_t order_id) {
     ERR_FAIL_COND_MSG(!valid_account(account), "account must be in [0, 4294967295].");
     ERR_FAIL_COND_MSG(order_id < 0, "order_id must not be negative.");
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     m_simulation->cancel(AccountId{static_cast<std::uint32_t>(account)},
                          OrderId{static_cast<std::uint64_t>(order_id)});
 }
@@ -204,7 +209,7 @@ void Simulation::modify_order(int64_t account, int64_t order_id, int64_t new_lim
                               int64_t new_qty) {
     ERR_FAIL_COND_MSG(!valid_account(account), "account must be in [0, 4294967295].");
     ERR_FAIL_COND_MSG(order_id < 0, "order_id must not be negative.");
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     m_simulation->modify(AccountId{static_cast<std::uint32_t>(account)},
                          OrderId{static_cast<std::uint64_t>(order_id)}, PriceTicks{new_limit_price},
                          Qty{new_qty});
@@ -224,7 +229,7 @@ void Simulation::pump_events_locked() {
 }
 
 bool Simulation::step_event() {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     ERR_FAIL_COND_V_MSG(!has_step_space_locked(), false,
                         "Event buffer is full: call drain_events() before stepping.");
     const bool stepped = m_simulation->step_event();
@@ -233,7 +238,7 @@ bool Simulation::step_event() {
 }
 
 bool Simulation::step_tick() {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     while (has_step_space_locked()) {
         const AdvanceResult result = m_simulation->advance();
         pump_events_locked();
@@ -248,7 +253,7 @@ bool Simulation::step_back() {
     int64_t last_sequence = 0;
     bool stepped = false;
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         stepped = m_simulation->step_back();
         last_sequence = static_cast<int64_t>(m_simulation->last_sequence().value());
         // This is the consumer thread: move undelivered events out of the ring, keeping only
@@ -268,12 +273,12 @@ bool Simulation::step_back() {
 }
 
 bool Simulation::can_step_back() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->can_step_back();
 }
 
 bool Simulation::has_redo() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->has_redo();
 }
 
@@ -283,7 +288,7 @@ void Simulation::run(double steps_per_second) {
     ERR_FAIL_COND_MSG(!std::isfinite(steps_per_second) || steps_per_second < 0.0,
                       "steps_per_second must be finite and >= 0 (0 = as fast as possible).");
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         m_steps_per_second = steps_per_second;
         m_running = true;
         m_pacing_reset = true;
@@ -294,19 +299,19 @@ void Simulation::run(double steps_per_second) {
 
 void Simulation::pause() {
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         m_running = false;
     }
     wake_worker();
 }
 
 bool Simulation::is_running() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_running;
 }
 
 double Simulation::get_steps_per_second() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_steps_per_second;
 }
 
@@ -315,7 +320,7 @@ void Simulation::start_worker() {
         return;
     }
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         m_stop_requested = false;
     }
     m_worker = std::thread{[this] { worker_main(); }};
@@ -326,7 +331,7 @@ void Simulation::stop_worker() {
         return;
     }
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         m_stop_requested = true;
         m_running = false;
     }
@@ -334,11 +339,18 @@ void Simulation::stop_worker() {
     m_worker.join();
 }
 
+std::unique_lock<std::mutex> Simulation::lock_for_caller() const {
+    m_lock_waiters.fetch_add(1, std::memory_order_acq_rel);
+    std::unique_lock lock{m_mutex};
+    m_lock_waiters.fetch_sub(1, std::memory_order_acq_rel);
+    return lock;
+}
+
 void Simulation::wake_worker() {
     // Taking the lock (even briefly) before notifying closes the window in which the worker has
     // evaluated its wait predicate but not yet blocked, so the wake-up cannot be lost.
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
     }
     m_wake.notify_all();
 }
@@ -360,8 +372,12 @@ void Simulation::worker_main() {
                 m_simulation->advance();
                 pump_events_locked();
             }
+            // Hand the lock to any waiting caller before taking it again.
             lock.unlock();
             std::this_thread::yield();
+            while (m_lock_waiters.load(std::memory_order_acquire) > 0) {
+                std::this_thread::yield();
+            }
             lock.lock();
             continue;
         }
@@ -426,57 +442,57 @@ int64_t Simulation::get_pending_event_count() const {
 // --- Queries -----------------------------------------------------------------------------------
 
 int64_t Simulation::get_last_sequence() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return static_cast<int64_t>(m_simulation->last_sequence().value());
 }
 
 int64_t Simulation::get_current_tick() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().current_tick().value();
 }
 
 bool Simulation::has_last_price() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().last_price().has_value();
 }
 
 int64_t Simulation::get_last_price() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().last_price().value_or(PriceTicks{}).value();
 }
 
 bool Simulation::has_best_bid() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().best_bid().has_value();
 }
 
 int64_t Simulation::get_best_bid() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().best_bid().value_or(PriceTicks{}).value();
 }
 
 bool Simulation::has_best_ask() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().best_ask().has_value();
 }
 
 int64_t Simulation::get_best_ask() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().best_ask().value_or(PriceTicks{}).value();
 }
 
 int64_t Simulation::get_total_volume() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().total_volume().value();
 }
 
 int64_t Simulation::get_tick_volume() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return m_simulation->engine().tick_volume().value();
 }
 
 int64_t Simulation::get_trade_count() const {
-    const std::lock_guard lock{m_mutex};
+    const std::unique_lock lock = lock_for_caller();
     return static_cast<int64_t>(m_simulation->engine().trade_count());
 }
 
@@ -488,7 +504,7 @@ godot::PackedInt64Array Simulation::get_depth(Side side, int64_t max_levels) con
     std::vector<DepthLevel> levels(static_cast<std::size_t>(max_levels));
     std::size_t count = 0;
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         count = m_simulation->engine().depth(static_cast<stocksim::Side>(side), levels);
     }
     rows.resize(static_cast<int64_t>(count) * DEPTH_STRIDE);
@@ -509,7 +525,7 @@ godot::PackedInt64Array Simulation::get_order(int64_t order_id) const {
     }
     std::optional<OrderView> view;
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         view = m_simulation->engine().find_order(OrderId{static_cast<std::uint64_t>(order_id)});
     }
     if (!view) {
@@ -529,12 +545,37 @@ godot::PackedInt64Array Simulation::get_order(int64_t order_id) const {
     return row;
 }
 
+godot::PackedInt64Array Simulation::get_account(int64_t account) const {
+    godot::PackedInt64Array row;
+    if (account < 0 || account > static_cast<int64_t>(UINT32_MAX)) {
+        return row;
+    }
+    std::optional<AccountView> view;
+    {
+        const std::unique_lock lock = lock_for_caller();
+        view = m_simulation->engine().account(AccountId{static_cast<std::uint32_t>(account)});
+    }
+    if (!view) {
+        return row;
+    }
+    row.resize(ACCOUNT_STRIDE);
+    const std::span<int64_t> out{row.ptrw(), static_cast<std::size_t>(ACCOUNT_STRIDE)};
+    out[ACCOUNT_FIELD_ID] = view->id.value();
+    out[ACCOUNT_FIELD_CASH] = view->cash.value();
+    out[ACCOUNT_FIELD_POSITION] = view->position.value();
+    out[ACCOUNT_FIELD_LIMITED] = view->limited ? 1 : 0;
+    out[ACCOUNT_FIELD_LEVERAGE_PERCENT] = view->leverage_percent;
+    out[ACCOUNT_FIELD_COMMITTED_BUY] = view->committed_buy.value();
+    out[ACCOUNT_FIELD_COMMITTED_SELL] = view->committed_sell.value();
+    return row;
+}
+
 // --- Persistence -------------------------------------------------------------------------------
 
 godot::PackedByteArray Simulation::save_state() const {
     std::vector<std::byte> bytes;
     {
-        const std::lock_guard lock{m_mutex};
+        const std::unique_lock lock = lock_for_caller();
         bytes = m_simulation->save();
     }
     godot::PackedByteArray data;
@@ -562,7 +603,7 @@ godot::Error Simulation::load_state(const godot::PackedByteArray& data) {
 // --- Static helpers ----------------------------------------------------------------------------
 
 String Simulation::reason_text(int64_t reason) {
-    ERR_FAIL_COND_V_MSG(reason < REASON_NONE || reason > REASON_LAST_TRADE_PRICE, String(),
+    ERR_FAIL_COND_V_MSG(reason < REASON_NONE || reason > REASON_INSUFFICIENT_SHARES, String(),
                         "reason must be a Simulation.Reason value.");
     return to_godot(stocksim::reason_text(static_cast<stocksim::Reason>(reason)));
 }
@@ -624,6 +665,7 @@ void Simulation::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_trade_count"), &Simulation::get_trade_count);
     ClassDB::bind_method(D_METHOD("get_depth", "side", "max_levels"), &Simulation::get_depth);
     ClassDB::bind_method(D_METHOD("get_order", "order_id"), &Simulation::get_order);
+    ClassDB::bind_method(D_METHOD("get_account", "account"), &Simulation::get_account);
 
     ClassDB::bind_method(D_METHOD("save_state"), &Simulation::save_state);
     ClassDB::bind_method(D_METHOD("load_state", "data"), &Simulation::load_state);
@@ -680,6 +722,8 @@ void Simulation::_bind_methods() {
     BIND_ENUM_CONSTANT(REASON_TAKER_FILL);
     BIND_ENUM_CONSTANT(REASON_MAKER_FILL);
     BIND_ENUM_CONSTANT(REASON_LAST_TRADE_PRICE);
+    BIND_ENUM_CONSTANT(REASON_INSUFFICIENT_FUNDS);
+    BIND_ENUM_CONSTANT(REASON_INSUFFICIENT_SHARES);
 
     BIND_ENUM_CONSTANT(EVENT_FIELD_SEQ);
     BIND_ENUM_CONSTANT(EVENT_FIELD_TICK);
@@ -713,6 +757,15 @@ void Simulation::_bind_methods() {
     BIND_ENUM_CONSTANT(DEPTH_FIELD_QTY);
     BIND_ENUM_CONSTANT(DEPTH_FIELD_ORDER_COUNT);
     BIND_ENUM_CONSTANT(DEPTH_STRIDE);
+
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_ID);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_CASH);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_POSITION);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_LIMITED);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_LEVERAGE_PERCENT);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_COMMITTED_BUY);
+    BIND_ENUM_CONSTANT(ACCOUNT_FIELD_COMMITTED_SELL);
+    BIND_ENUM_CONSTANT(ACCOUNT_STRIDE);
 }
 
 } // namespace stocksim::gdext

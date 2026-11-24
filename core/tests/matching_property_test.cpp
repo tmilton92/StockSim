@@ -10,6 +10,7 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -30,16 +31,64 @@ struct Ledger {
     Qty cancelled;
 };
 
+/// Limited accounts opened in every session: leveraged, cash-only, and shares-only.
+void open_limited_accounts(MatchingEngine& engine) {
+    REQUIRE(engine.open_account(AccountId{1}, Money{50'000}, Qty{200}, 200));
+    REQUIRE(engine.open_account(AccountId{2}, Money{20'000}, Qty{0}, 100));
+    REQUIRE(engine.open_account(AccountId{3}, Money{0}, Qty{500}, 100));
+}
+
+/// Ledger invariants: totals conserved, limited accounts never short, and every account's
+/// commitments equal what its resting orders and pending sell stops actually reserve.
+void check_accounts(const MatchingEngine& engine, std::uint64_t max_order_id) {
+    REQUIRE(engine.ledger().check_conservation());
+    std::map<AccountId, Money> buy;
+    std::map<AccountId, Qty> sell;
+    for (const Side side : {Side::kBuy, Side::kSell}) {
+        engine.book().for_each_in_priority(side, [&](const RestingOrder& order) {
+            if (side == Side::kBuy) {
+                buy[order.account] += notional(order.price, order.remaining);
+            } else {
+                sell[order.account] += order.remaining;
+            }
+        });
+    }
+    for (std::uint64_t id = 1; id <= max_order_id; ++id) {
+        const std::optional<OrderView> order = engine.find_order(OrderId{id});
+        if (order && order->status == OrderStatus::kPendingStop && order->side == Side::kSell) {
+            sell[order->account] += order->remaining;
+        }
+    }
+    for (std::uint32_t raw = 1; raw <= test::RandomFlow::kAccountCount; ++raw) {
+        const AccountId id{raw};
+        const std::optional<AccountView> account = engine.account(id);
+        if (!account) {
+            continue;
+        }
+        INFO("account " << raw);
+        CHECK(account->committed_buy == (buy.contains(id) ? buy.at(id) : Money{}));
+        CHECK(account->committed_sell == (sell.contains(id) ? sell.at(id) : Qty{}));
+        if (account->limited) {
+            CHECK(account->position >= Qty{0});
+        }
+    }
+}
+
 /// Feeds a random stream of requests, interleaving single steps and whole ticks, and returns
 /// every event emitted. Invariants that must hold between steps are checked as it runs.
 std::vector<Event> run_session(std::uint64_t seed, int request_count) {
     test::RandomFlow flow{seed};
     Rng& rng = flow.rng();
     MatchingEngine engine;
+    open_limited_accounts(engine);
+    std::uint64_t max_order_id = 0;
     std::vector<Event> all_events;
 
     const auto drain = [&] {
         const std::span<const Event> events = engine.events();
+        for (const Event& event : events) {
+            max_order_id = std::max(max_order_id, event.order_id.value());
+        }
         all_events.insert(all_events.end(), events.begin(), events.end());
         engine.clear_events();
     };
@@ -59,6 +108,9 @@ std::vector<Event> run_session(std::uint64_t seed, int request_count) {
         }
         REQUIRE_FALSE(engine.book().is_crossed());
         drain();
+        if (engine.idle()) {
+            check_accounts(engine, max_order_id);
+        }
     }
     engine.step_tick();
     drain();

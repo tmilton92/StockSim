@@ -2,6 +2,9 @@ add_executable(stocksim_core_tests)
 target_sources(
     stocksim_core_tests
     PRIVATE
+        account_engine_test.cpp
+        agents_test.cpp
+        account_ledger_test.cpp
         crt_report_mode.cpp
         determinism_test.cpp
         engine_state_test.cpp

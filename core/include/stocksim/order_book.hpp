@@ -72,6 +72,10 @@ public:
     /// True if best bid >= best ask. Never true after the matching engine finishes a step.
     [[nodiscard]] bool is_crossed() const;
 
+    /// Cost of immediately taking [qty] from [side] (best prices first), counting only what is
+    /// resting there. This is what a market order for [qty] against [side] would pay now.
+    [[nodiscard]] Money cost_to_take(Side side, Qty qty) const;
+
     /// Calls `visit(const RestingOrder&)` for every order on `side` in priority order: best
     /// price first, then arrival order within a price. Re-adding orders in this order rebuilds
     /// an equivalent book (used by serialization).

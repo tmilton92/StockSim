@@ -18,11 +18,11 @@ using namespace stocksim::test;
 
 namespace {
 
-// Pinned results of run_session(2024); see the golden test below. Re-pinned after RandomFlow
-// stopped drawing two random values in one argument list (unspecified evaluation order: MSVC and
-// GCC disagreed with Clang). This value is what macOS/Clang produced before the fix.
+// Pinned results of run_session(2024); see the golden test below. Re-pinned for event schema v2
+// (ADR 0010): same 1435 events, different digest because the schema version is hashed. Also
+// reflects RandomFlow drawing modify() arguments in a fixed order (it varied by compiler).
 constexpr std::uint64_t kGoldenEventCount = 1435;
-constexpr std::uint64_t kGoldenDigest = 0xE34DCD53D92C4FBAULL;
+constexpr std::uint64_t kGoldenDigest = 0xE612B6E34B22DB5BULL;
 
 struct SessionDigest {
     std::uint64_t digest = 0;
@@ -63,9 +63,10 @@ SessionDigest run_session(std::uint64_t seed) {
 
 TEST_CASE("event hashing matches the reference FNV-1a encoding", "[determinism]") {
     // Reference digests computed by an independent Python implementation of the documented
-    // encoding (schema version, then each field as fixed-width little-endian bytes).
+    // encoding (schema version, then each field as fixed-width little-endian bytes). Schema
+    // v2 (ADR 0010) changed the version mixed in first, and so every digest.
     const EventLogHasher empty;
-    CHECK(empty.digest() == 0xAD2ACA7747985764ULL);
+    CHECK(empty.digest() == 0x8D1ACE904A398D17ULL);
 
     Event event;
     event.seq = SequenceNumber{1};
@@ -85,7 +86,7 @@ TEST_CASE("event hashing matches the reference FNV-1a encoding", "[determinism]"
     event.remaining = Qty{0};
     EventLogHasher one;
     one.add(event);
-    CHECK(one.digest() == 0xED9A2D4563961524ULL);
+    CHECK(one.digest() == 0xC0BFA36134C79141ULL);
     CHECK(one.event_count() == 1);
 }
 

@@ -1,6 +1,7 @@
 // Full-state serialization of MatchingEngine (TODO §2). Layout (all little-endian, see
-// docs/adr/0006): counters and market data, resting orders per side in priority order, the
-// active order, triggered stops, pending stops per side in trigger order, queued requests.
+// docs/adr/0006 and 0010): counters and market data, resting orders per side in priority order,
+// the active order, triggered stops, pending stops per side in trigger order, queued requests,
+// and the account ledger.
 
 #include "stocksim/matching_engine.hpp"
 #include "stocksim/order.hpp"
@@ -121,6 +122,10 @@ void MatchingEngine::save_state(StateWriter& out) const {
     out.i64(m_tick_volume.value());
     out.i64(m_previous_tick_volume.value());
     out.u64(m_trade_count);
+    out.i64(m_taker_buy.value());
+    out.i64(m_taker_sell.value());
+    out.i64(m_previous_taker_buy.value());
+    out.i64(m_previous_taker_sell.value());
 
     for (const Side side : {Side::kBuy, Side::kSell}) {
         std::vector<RestingOrder> orders;
@@ -179,6 +184,8 @@ void MatchingEngine::save_state(StateWriter& out) const {
         out.i64(command.new_limit_price.value());
         out.i64(command.new_qty.value());
     }
+
+    m_ledger.save_state(out);
 }
 
 Result<MatchingEngine> MatchingEngine::load_state(StateReader& in, const EngineConfig& config) {
@@ -188,6 +195,7 @@ Result<MatchingEngine> MatchingEngine::load_state(StateReader& in, const EngineC
     engine.load_active(in);
     engine.load_stops(in);
     engine.load_commands(in);
+    engine.m_ledger.load_state(in);
     if (!in.ok()) {
         return kCorrupt;
     }
@@ -204,6 +212,10 @@ void MatchingEngine::load_counters(StateReader& in) {
     m_tick_volume = Qty{in.i64()};
     m_previous_tick_volume = Qty{in.i64()};
     m_trade_count = in.u64();
+    m_taker_buy = Qty{in.i64()};
+    m_taker_sell = Qty{in.i64()};
+    m_previous_taker_buy = Qty{in.i64()};
+    m_previous_taker_sell = Qty{in.i64()};
     if (m_next_order_id == 0 || m_next_sequence == 0) {
         in.fail();
     }

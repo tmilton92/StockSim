@@ -115,6 +115,10 @@ std::string_view reason_text(Reason reason) noexcept {
         return "Filled as the maker: this resting order provided the liquidity.";
     case Reason::kLastTradePrice:
         return "The market price is the price of the last trade, not a measure of value.";
+    case Reason::kInsufficientFunds:
+        return "Rejected: the account cannot afford this order (cash and leverage limit).";
+    case Reason::kInsufficientShares:
+        return "Rejected: the account does not hold enough shares to sell (no short selling).";
     }
     return "Unknown reason.";
 }

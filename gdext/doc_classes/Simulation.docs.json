@@ -14,6 +14,7 @@
         "get_event_schema_version": "Returns the version of the event layout. It changes whenever event fields, types or reasons change meaning.",
         "get_last_price": "Returns the price of the most recent trade in ticks, or [code]0[/code] before the first trade (check [method has_last_price]). This is the market price: the last trade, not a measure of value.",
         "get_last_sequence": "Returns the sequence number of the most recent event in the current state ([code]0[/code] before any event). After [signal rewound], discard any held event with a larger sequence number.",
+        "get_account": "Returns account [param account] as [constant ACCOUNT_STRIDE] integers indexed with the [code]ACCOUNT_FIELD_*[/code] constants, or an empty array if it has never been opened or traded. Cash is in price ticks x shares; positions are in shares.",
         "get_order": "Returns the live order [param order_id] as [constant ORDER_STRIDE] integers indexed with the [code]ORDER_FIELD_*[/code] constants, or an empty array if it is not live (filled, cancelled, rejected, or not yet processed).",
         "get_pending_event_count": "Returns the number of events waiting to be returned by [method drain_events].",
         "get_scenario_name": "Returns the [code]name[/code] of the loaded scenario, or [code]\"Default\"[/code].",
@@ -80,6 +81,8 @@
         "REASON_TAKER_FILL": "Filled as the taker (took liquidity).",
         "REASON_MAKER_FILL": "Filled as the maker (provided liquidity).",
         "REASON_LAST_TRADE_PRICE": "The market price is the last trade price.",
+        "REASON_INSUFFICIENT_FUNDS": "The account cannot afford the order with its cash and leverage.",
+        "REASON_INSUFFICIENT_SHARES": "The account does not hold enough uncommitted shares to sell (no short selling).",
         "EVENT_FIELD_SEQ": "Global sequence number; strictly increasing by one.",
         "EVENT_FIELD_TICK": "Tick in which the event happened.",
         "EVENT_FIELD_TYPE": "An [enum EventType] value.",
@@ -109,6 +112,14 @@
         "DEPTH_FIELD_PRICE": "Price level in ticks.",
         "DEPTH_FIELD_QTY": "Total quantity resting at this price.",
         "DEPTH_FIELD_ORDER_COUNT": "Number of orders resting at this price.",
-        "DEPTH_STRIDE": "Number of integers per row returned by [method get_depth]."
+        "DEPTH_STRIDE": "Number of integers per row returned by [method get_depth].",
+        "ACCOUNT_FIELD_ID": "Account id.",
+        "ACCOUNT_FIELD_CASH": "Cash balance (may be negative when trading on leverage).",
+        "ACCOUNT_FIELD_POSITION": "Shares held.",
+        "ACCOUNT_FIELD_LIMITED": "[code]1[/code] if the account was opened with limits (buying power and no short selling), [code]0[/code] if unlimited.",
+        "ACCOUNT_FIELD_LEVERAGE_PERCENT": "Leverage as a percentage: [code]100[/code] is 1x.",
+        "ACCOUNT_FIELD_COMMITTED_BUY": "Cash reserved by resting buy orders.",
+        "ACCOUNT_FIELD_COMMITTED_SELL": "Shares reserved by resting sell orders and pending sell stops.",
+        "ACCOUNT_STRIDE": "Number of integers returned by [method get_account] for a known account."
     }
 }
